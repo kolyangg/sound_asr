@@ -6,6 +6,9 @@ if [ "$#" -ne 2 ]; then
   exit 1
 fi
 
+# Record the current working directory
+CURRENT_DIR=$(pwd)
+
 INPUT_ARPA=$1
 OUTPUT_BIN=$2
 
@@ -21,6 +24,6 @@ make -j4
 
 # Run build_binary
 cd bin || exit
-./build_binary "../../$INPUT_ARPA" "../../$OUTPUT_BIN"
+./build_binary "$CURRENT_DIR/$INPUT_ARPA" "$CURRENT_DIR/$OUTPUT_BIN"
 
-echo "Conversion completed: $INPUT_ARPA -> $OUTPUT_BI
+echo "Conversion completed: $INPUT_ARPA -> $OUTPUT_BIN"
