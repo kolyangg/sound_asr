@@ -42,10 +42,11 @@ def calc_cer(target_text, predicted_text) -> float:
     
     # TO CHECK A LOT !!! #
     
-    
+    debug = False
     # Check inputs
-    print('target_text:', target_text)
-    print('predicted_text:', predicted_text) # PRINT PREDICTED TEXT!!!
+    if debug:
+        print('target_text:', target_text)
+        print('predicted_text:', predicted_text) # PRINT PREDICTED TEXT!!!
     
     # # Handle empty target case
     if not target_text:
