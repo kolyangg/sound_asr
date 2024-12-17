@@ -159,7 +159,7 @@ class Inferencer(BaseTrainer):
 
     #     return batch
 
-    def process_batch(self, batch_idx, batch, metrics, part, use_beam_search=False, use_lm=False):
+    def process_batch(self, batch_idx, batch, metrics, part, use_beam_search=False, use_lm=False, beam_size=10):
         """
         Process batch during inference, with option to use beam search.
         Also handles BPE tokenization if text_encoder has use_bpe=True.
@@ -283,6 +283,7 @@ class Inferencer(BaseTrainer):
                     part=part,
                     metrics=self.evaluation_metrics,
                     use_beam_search=use_beam_search, 
+                    beam_size=self.cfg_trainer.beam_size,
                     use_lm=use_lm
                 )
 

@@ -18,15 +18,22 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 class CTCTextEncoder:
     def __init__(self, alphabet=None, arpa_path=None, binary_path=None, unigram_path=None,
                  use_bpe=False, pretrained_tokenizer="bert-base-uncased", 
-                 lm_weight=0.5, beam_width=100, **kwargs):
+                 lm_weight=0.5, beam_size=100, **kwargs):
         """Initialize encoder with explicit blank token handling"""
         # Define blank token explicitly
-        self.BLANK_TOKEN = "[BLANK]"  # Explicit blank token
+        self.BLANK_TOKEN = "" 
         self.use_bpe = use_bpe
-        self.beam_width = beam_width
+        self.beam_size = beam_size
         self.lm_weight = lm_weight
         self.arpa_path = arpa_path
         self.binary_path = binary_path
+        
+        print('CTC Text Encoder:')
+        print('use_bpe:', use_bpe)
+        print('lm_weight:', lm_weight)
+        print('beam_size:', beam_size)
+        
+        self.EMPTY_TOK = "" # ADDED
         
         # Load unigrams if provided
         self.unigrams = None
@@ -123,14 +130,24 @@ class CTCTextEncoder:
             self.lm = kenlm.Model(model_path)
             print(f"Loaded {'binary' if self.binary_path else 'ARPA'} language model")
             
-            # Get vocabulary without blank token
-            labels = [c for c in self.vocab if c != self.BLANK_TOKEN]
+            
+            
+            
+            # # Get vocabulary without blank token
+            # labels = [c for c in self.vocab if c != self.BLANK_TOKEN]
+            
+            # Ensure blank token is at index 0
+            labels = [self.BLANK_TOKEN] + [c for c in self.vocab if c != self.BLANK_TOKEN]
+            
+            # Ensure blank token is included at index 0
+            assert self.BLANK_TOKEN == self.vocab[0], "Blank token must be at index 0"
+            print(f"Decoder labels initialized with blank at index 0: {labels[:10]}")
             
             decoder_config = {
                 "labels": labels,
                 "kenlm_model_path": model_path,
-                "alpha": self.lm_weight,
-                "beta": 0.1,
+                "alpha": self.lm_weight, # LM weight
+                "beta": 0.1, # Word insertion penalty
                 "unk_score_offset": -10.0,
                 # "blank_token": self.BLANK_TOKEN,  # Explicitly set blank token
             }
@@ -234,12 +251,14 @@ class CTCTextEncoder:
             return "".join(decoded)
 
     
-    def ctc_beam_search(self, probs, beam_size: int = 10,
+    def ctc_beam_search(self, probs, beam_size: int = 100,
                        use_lm: bool = False, debug: bool = False) -> List[Tuple[str, float]]:
         """
         Beam search with enhanced BPE support
         """
-        debug = False
+        beam_size = self.beam_size
+        # debug = False
+        debug = True
         
         if use_lm and self.decoder is not None:
             try:
@@ -297,6 +316,9 @@ class CTCTextEncoder:
     
     def _standard_beam_search(self, probs, beam_size: int = 10, debug: bool = False) -> List[Tuple[str, float]]:
         """Original beam search implementation with improved debugging"""
+        
+        beam_size = self.beam_size
+        
         # Convert input to torch tensor if needed
         if isinstance(probs, np.ndarray):
             probs = torch.from_numpy(probs)

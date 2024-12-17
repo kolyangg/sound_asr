@@ -77,9 +77,9 @@ class BaseTrainer:
 
         # define dataloaders
         self.train_dataloader = dataloaders["train"]
-        print('check train_dataloader')
-        print(dataloaders['train'].dataset[0])
-        print(self.train_dataloader.dataset[0])
+        # print('check train_dataloader')
+        # print(dataloaders['train'].dataset[0])
+        # print(self.train_dataloader.dataset[0])
         if epoch_len is None:
             # epoch-based training
             self.epoch_len = len(self.train_dataloader)
