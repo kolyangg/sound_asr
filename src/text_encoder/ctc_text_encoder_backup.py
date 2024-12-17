@@ -625,7 +625,7 @@ class CTCTextEncoder:
     #         return final_beams
     
     # NEW with debugging - V3
-    def ctc_beam_search(self, probs, beam_size=50, use_lm=False, debug=True): # beam_size = 10 default
+    def ctc_beam_search(self, probs, beam_size=50, use_lm=False, debug=False): # beam_size = 10 default
         """Use log probabilities to prevent underflow with improved LM integration"""
         if use_lm:
             dp = {("", self.EMPTY_TOK): (0.0, 0.0)}  # Using log probs (0.0 = log(1.0))

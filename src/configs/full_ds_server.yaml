@@ -26,7 +26,7 @@ text_encoder:
   binary_path: 3-gram_lc.bin
   # arpa_path: ~
   # binary_path: ~
-  lm_weight: 0.35 # less for lighter model
+  lm_weight: 0.15 # less for lighter model
   # lm_weight: 0
   unigram_path: librispeech-vocab.txt
   # unigram_path: ~

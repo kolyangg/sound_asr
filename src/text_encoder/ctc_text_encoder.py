@@ -257,8 +257,8 @@ class CTCTextEncoder:
         Beam search with enhanced BPE support
         """
         beam_size = self.beam_size
-        # debug = False
-        debug = True
+        debug = False
+        # debug = True
         
         if use_lm and self.decoder is not None:
             try:

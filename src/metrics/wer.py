@@ -51,6 +51,8 @@ class BeamSearchWERMetric(BaseMetric):
         """
         wers = []
         
+        debug = False
+        
         # Convert log_probs to probabilities
         probs = torch.exp(log_probs.cpu())
 
@@ -75,8 +77,9 @@ class BeamSearchWERMetric(BaseMetric):
             wers.append(wer)
 
             # Debugging output
-            print(f"\n[DEBUG] Example {i}:")
-            print(f"Target Text : '{target_text}'")
-            print(f"Beam Prediction : '{best_pred_text}' (WER: {wer * 100:.2f})")
+            if debug:
+                print(f"\n[DEBUG] Example {i}:")
+                print(f"Target Text : '{target_text}'")
+                print(f"Beam Prediction : '{best_pred_text}' (WER: {wer * 100:.2f})")
         
         return sum(wers) / len(wers)

@@ -322,12 +322,15 @@ class Trainer(BaseTrainer):
         Log predictions with corrected greedy and beam search handling.
         Consistency ensured with ctc_beam_search.
         """
+        debug = False
+        
         rows = {}
         log_probs = log_probs.cpu()
         log_probs_length = log_probs_length.cpu()
 
         # Greedy decoding
-        print("\n=== Debug: Greedy Decoding ===")
+        if debug:
+            print("\n=== Debug: Greedy Decoding ===")
         argmax_inds = log_probs.argmax(-1).numpy()
         argmax_inds = [
             inds[: int(ind_len)] for inds, ind_len in zip(argmax_inds, log_probs_length.numpy())
@@ -336,10 +339,12 @@ class Trainer(BaseTrainer):
         for i, inds in enumerate(argmax_inds):
             pred = self.text_encoder.ctc_decode(inds)
             greedy_predictions.append(pred)
-            print(f"Example {i}: Greedy Prediction -> '{pred}'")
+            if debug:
+                print(f"Example {i}: Greedy Prediction -> '{pred}'")
 
         # Beam search decoding
-        print("\n=== Debug: Beam Search Decoding ===")
+        if debug:
+            print("\n=== Debug: Beam Search Decoding ===")
         beam_predictions = []
         probs = torch.exp(log_probs)  # Convert log_probs to probabilities
         for i in range(len(text)):
@@ -352,7 +357,8 @@ class Trainer(BaseTrainer):
             )
             best_prediction = beam_results[0][0]  # Top beam result
             beam_predictions.append(best_prediction)
-            print(f"Example {i}: Beam Prediction -> '{best_prediction}'")
+            if debug:
+                print(f"Example {i}: Beam Prediction -> '{best_prediction}'")
 
         # Compare and log results
         for i in range(min(examples_to_log, len(text))):
@@ -364,10 +370,11 @@ class Trainer(BaseTrainer):
             cer_greedy = calc_cer(target, greedy_pred) * 100
             cer_beam = calc_cer(target, beam_pred) * 100
 
-            print(f"\n=== Example {i} Comparison ===")
-            print(f"Target Text      : '{target}'")
-            print(f"Greedy Prediction: '{greedy_pred}' (CER: {cer_greedy:.2f})")
-            print(f"Beam Prediction  : '{beam_pred}' (CER: {cer_beam:.2f})")
+            if debug:
+                print(f"\n=== Example {i} Comparison ===")
+                print(f"Target Text      : '{target}'")
+                print(f"Greedy Prediction: '{greedy_pred}' (CER: {cer_greedy:.2f})")
+                print(f"Beam Prediction  : '{beam_pred}' (CER: {cer_beam:.2f})")
 
             rows[Path(audio_path[i]).name] = {
                 "target": target,
