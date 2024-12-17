@@ -341,6 +341,8 @@ class CTCTextEncoder:
         # Create index mappings
         self.ind2char = dict(enumerate(self.vocab))
         self.char2ind = {v: k for k, v in self.ind2char.items()}
+        self.blank_index = self.char2ind[self.EMPTY_TOK]
+        print(f"Final blank token index: {self.blank_index}")
         
         print(f"\nVocabulary Info:")
         print(f"Size: {len(self.vocab)}")
