@@ -50,11 +50,17 @@ Follow these steps to install the project:
    ```bash
    pre-commit install
    ```
-   
+
 3. Run script to download / setup LM assets and noise data:
    ```bash
    ./LM_setup.sh
    ```
+
+4. Login to wandb and provide API key when prompted:
+   ```bash
+   wandb login
+   ```
+
 
 ## How To Use
 
