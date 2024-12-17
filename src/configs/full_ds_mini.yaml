@@ -2,8 +2,8 @@ defaults:
   - model: ds2
   - writer: wandb
   - metrics: example
-  - datasets: example
-  # dataloader: sortagrad # new one to try!
+  - datasets: minibatch
+  # - dataloader: sortagrad # new one to try!
   - dataloader: example
   - transforms: example_only_instance # default
   # - transforms: example_only_instance_more # example_only_instance default

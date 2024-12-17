@@ -58,18 +58,49 @@ class CTCTextEncoder:
         self.EMPTY_TOK = ""
         self.use_bpe = use_bpe
         
+        # if use_bpe:
+        #     # Load pretrained tokenizer
+        #     self.tokenizer = AutoTokenizer.from_pretrained(pretrained_tokenizer)
+        #     # Set vocabulary from tokenizer
+        #     self.vocab = [self.EMPTY_TOK] + list(self.tokenizer.vocab.keys())
+        # else:
+        #     # Original char-level setup
+        #     if alphabet is None:
+        #         alphabet = list(ascii_lowercase + " ")
+        #     self.alphabet = alphabet
+        #     self.vocab = [self.EMPTY_TOK] + list(self.alphabet)
+
+        
+        ### NEW VERSION TO FIX SPACES ERRROR!!! ###
+        # Initialize vocabulary
         if use_bpe:
-            # Load pretrained tokenizer
+            # BPE tokenization
             self.tokenizer = AutoTokenizer.from_pretrained(pretrained_tokenizer)
-            # Set vocabulary from tokenizer
-            self.vocab = [self.EMPTY_TOK] + list(self.tokenizer.vocab.keys())
+            self.EMPTY_TOK = self.tokenizer.pad_token or "[PAD]"
+            self.vocab = list(self.tokenizer.vocab.keys())
+
+            # Ensure the blank token is explicitly added if not in vocab
+            if self.EMPTY_TOK not in self.vocab:
+                self.vocab.append(self.EMPTY_TOK)
+            print(f"Loaded BPE vocabulary of size: {len(self.vocab)}")
         else:
-            # Original char-level setup
+            # Character-level setup
             if alphabet is None:
-                alphabet = list(ascii_lowercase + " ")
+                if self.unigrams:
+                    # Build alphabet from unigrams
+                    alphabet_set = set()
+                    for word in self.unigrams:
+                        alphabet_set.update(word)
+                    alphabet_set.add(" ")
+                    alphabet = sorted(list(alphabet_set))
+                else:
+                    alphabet = list(ascii_lowercase + " ")
+
             self.alphabet = alphabet
             self.vocab = [self.EMPTY_TOK] + list(self.alphabet)
 
+        ### NEW VERSION TO FIX SPACES ERRROR!!! ###
+        
         # Create index mappings
         self.ind2char = dict(enumerate(self.vocab))
         self.char2ind = {v: k for k, v in self.ind2char.items()}
@@ -198,12 +229,14 @@ class CTCTextEncoder:
         CTC decoding - works with both BPE and char-level
         """
         decoded = []
-        last_char_ind = self.EMPTY_TOK
+        # last_char_ind = self.EMPTY_TOK # old version
+        last_char_ind = self.blank_index  # Use correct blank index (new version)
         
         for ind in inds:
             if last_char_ind == ind:
                 continue
-            if ind != self.EMPTY_TOK:
+            # if ind != self.EMPTY_TOK: # old version
+            if ind != self.blank_index: # new version
                 decoded.append(self.ind2char[ind])
             last_char_ind = ind
             
