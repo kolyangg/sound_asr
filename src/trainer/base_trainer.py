@@ -465,7 +465,8 @@ class BaseTrainer:
         for metric_name in metric_tracker.keys():
             self.writer.add_scalar(f"{metric_name}", metric_tracker.avg(metric_name))
 
-    def _save_checkpoint(self, epoch, save_best=False, only_best=False):
+    def _save_checkpoint(self, epoch, save_best=True, only_best=True):
+    # def _save_checkpoint(self, epoch, save_best=False, only_best=False):
         """
         Save the checkpoints.
 

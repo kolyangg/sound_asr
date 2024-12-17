@@ -67,3 +67,6 @@ class BaselineModel(nn.Module):
         result_info = result_info + f"\nTrainable parameters: {trainable_parameters}"
 
         return result_info
+
+
+    

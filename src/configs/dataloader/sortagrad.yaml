@@ -1,0 +1,5 @@
+_target_: src.datasets.sortagrad_dl.SortaGradDataLoader
+batch_size: 20 # 10 default
+num_workers: 16 # 2 default
+pin_memory: True
+num_epochs_sorted: 20  # Number of epochs to sort by length (SortaGrad)
