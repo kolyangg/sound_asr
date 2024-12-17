@@ -312,7 +312,6 @@ class CTCTextEncoder:
          ### NEW VERSION TO FIX SPACES ERRROR!!! ###
         # Initialize vocabulary
         if use_bpe:
-            # BPE tokenization
             self.tokenizer = AutoTokenizer.from_pretrained(pretrained_tokenizer)
             self.EMPTY_TOK = self.tokenizer.pad_token or "[PAD]"
             self.vocab = list(self.tokenizer.vocab.keys())
@@ -322,27 +321,23 @@ class CTCTextEncoder:
                 self.vocab.append(self.EMPTY_TOK)
             print(f"Loaded BPE vocabulary of size: {len(self.vocab)}")
         else:
-            # Character-level setup
             if alphabet is None:
                 if self.unigrams:
-                    # Build alphabet from unigrams
-                    alphabet_set = set()
-                    for word in self.unigrams:
-                        alphabet_set.update(word)
+                    alphabet_set = set(char for word in self.unigrams for char in word)
                     alphabet_set.add(" ")
                     alphabet = sorted(list(alphabet_set))
                 else:
                     alphabet = list(ascii_lowercase + " ")
 
             self.alphabet = alphabet
-            self.vocab = [self.EMPTY_TOK] + list(self.alphabet)
-        
+            self.vocab = list(self.alphabet)
+
+        # Ensure EMPTY_TOK is explicitly added to the end
         if self.EMPTY_TOK not in self.vocab:
             self.vocab.append(self.EMPTY_TOK)
             print(f"Explicitly added EMPTY_TOK '{self.EMPTY_TOK}' at the end of vocab.")
-
-        ### NEW VERSION TO FIX SPACES ERRROR!!! ###
-        
+                ### NEW VERSION TO FIX SPACES ERRROR!!! ###
+                
         # Create index mappings
         self.ind2char = dict(enumerate(self.vocab))
         self.char2ind = {v: k for k, v in self.ind2char.items()}
@@ -355,7 +350,7 @@ class CTCTextEncoder:
         
         # Initialize language model components
         self._initialize_language_model()
-    
+            
     
     def encode(self, text) -> torch.Tensor:
         """Encode text with BPE or char-level encoding"""

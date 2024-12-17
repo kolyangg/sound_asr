@@ -4,7 +4,7 @@ defaults:
   - metrics: example
   - datasets: minibatch
   # - dataloader: sortagrad # new one to try!
-  - dataloader: example
+  - dataloader: minibatch
   - transforms: example_only_instance # default
   # - transforms: example_only_instance_more # example_only_instance default
   - _self_
