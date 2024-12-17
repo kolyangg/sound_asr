@@ -10,7 +10,7 @@ defaults:
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 3e-2 # using lower; 3e-4 default
+  lr: 3e-4 # 3e-4 default
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
   max_lr: 1e-2
@@ -32,7 +32,6 @@ text_encoder:
   # unigram_path: ~
   use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
   pretrained_tokenizer: bert-base-uncased
-  use_lm: True # Seems to be working standalone, to check with beam search
   beam_size: 100 # New input
 trainer:
   log_step: 200 # 50 default
@@ -50,5 +49,6 @@ trainer:
   save_dir: "saved"
   seed: 1
   use_beam_search: True # to CHECK if this switch if working here
+  use_lm: True # Seems to be working standalone, to check with beam search
   # max_grad_norm: 50.0 # Max norm of the gradients
   
