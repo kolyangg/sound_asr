@@ -26,4 +26,5 @@ make -j4
 cd bin || exit
 ./build_binary "$CURRENT_DIR/$INPUT_ARPA" "$CURRENT_DIR/$OUTPUT_BIN"
 
+cd "$CURRENT_DIR" || exit
 echo "Conversion completed: $INPUT_ARPA -> $OUTPUT_BIN"
