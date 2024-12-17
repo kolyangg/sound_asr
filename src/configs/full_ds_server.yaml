@@ -2,7 +2,7 @@ defaults:
   - model: ds2
   - writer: server
   - metrics: ds2 # updated
-  - datasets: minibatch
+  - datasets: example
   # - dataloader: sortagrad # new one to try!
   - dataloader: server
   - transforms: example_only_instance # default
@@ -50,5 +50,6 @@ trainer:
   seed: 1
   use_beam_search: True # to CHECK if this switch if working here
   use_lm: True # Seems to be working standalone, to check with beam search
+  beam_size: 100 # New input (remove from trainer later)
   # max_grad_norm: 50.0 # Max norm of the gradients
   
