@@ -12,6 +12,12 @@
 
 ## Installation
 
+Download repo:
+```bash
+   git clone https://github.com/kolyangg/sound_asr.git
+   cd sound_asr
+```
+
 Follow these steps to install the project:
 
 0. (Optional) Create and activate new environment using [`conda`](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html) or `venv` ([`+pyenv`](https://github.com/pyenv/pyenv)).
