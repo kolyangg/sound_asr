@@ -1118,151 +1118,32 @@ from torch import nn
 
 # ##### WORKING VERSION #####
 
-# class DeepSpeech2Model(nn.Module):
-#     def __init__(self, n_feats, n_tokens, rnn_hidden=512, rnn_layers=5, bidirectional=True):
-#         super().__init__()
-#         self.rnn_hidden = rnn_hidden
-#         self.rnn_layers_count = rnn_layers
-#         self.bidirectional = bidirectional
-#         self.n_tokens = n_tokens
-#         self.n_feats = n_feats
-
-#         # Modify convolution layers to reduce less in time dimension
-#         self.conv_layers = nn.Sequential(
-#             # Reduce stride in time dimension from (2,2) to (2,1)
-#             nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 1), padding=(20, 5)),
-#             nn.BatchNorm2d(32),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-#             nn.BatchNorm2d(32),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(32, 96, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-#             nn.BatchNorm2d(96),
-#             nn.ReLU(inplace=True),
-#         )
-
-#         # RNN layers and FC will be lazily initialized
-#         self.rnn_layers = None
-#         self.fc = None
-
-#     def forward(self, spectrogram, spectrogram_length, **batch):
-#         """
-#         Forward pass of DeepSpeech2.
-#         Args:
-#             spectrogram (Tensor): Input spectrogram of shape (B, F, T).
-#             spectrogram_length (Tensor): Original spectrogram lengths.
-#         Returns:
-#             dict: Contains "log_probs" and "log_probs_length".
-#         """
-#         # Input shape: (B, F, T) -> (B, 1, F, T)
-#         x = spectrogram.unsqueeze(1)
-
-#         # Pass through convolutional layers
-#         x = self.conv_layers(x)  # Shape: (B, C, F', T')
-#         B, C, Freq, Time = x.size()
-
-#         # Flatten for RNN input: (B, T', C*F')
-#         x = x.permute(0, 3, 1, 2).contiguous().view(B, Time, C * Freq)
-
-#         # Dynamically initialize RNN layers if needed
-#         if self.rnn_layers is None:
-#             input_size = C * Freq
-#             self.rnn_layers = nn.ModuleList([
-#                 nn.GRU(input_size=input_size if i == 0 else self.rnn_hidden * (2 if self.bidirectional else 1),
-#                     hidden_size=self.rnn_hidden, num_layers=1, batch_first=True, bidirectional=self.bidirectional)
-#                 for i in range(self.rnn_layers_count)
-#             ])
-#             self.batch_norms = nn.ModuleList([
-#                 nn.BatchNorm1d(self.rnn_hidden * (2 if self.bidirectional else 1))
-#                 for _ in range(self.rnn_layers_count)
-#             ])
-#             self.fc = nn.Linear(self.rnn_hidden * (2 if self.bidirectional else 1), self.n_tokens)
-#             self.to(x.device)
-
-#         # Pass through RNN layers with BatchNorm
-#         for rnn, bn in zip(self.rnn_layers, self.batch_norms):
-#             x, _ = rnn(x)
-#             x = bn(x.transpose(1, 2)).transpose(1, 2)
-
-#         # Fully connected layer for character probabilities
-#         x = self.fc(x)  # Shape: (B, T', n_tokens)
-
-#         # Apply log_softmax - keep in (B, T, C) format
-#         log_probs = nn.functional.log_softmax(x, dim=-1)
-
-#         # Calculate output lengths based on the actual sequence reduction
-#         log_probs_length = self.transform_input_lengths(spectrogram_length)
-
-#         # Debug prints
-#         # print("\nLength check:")
-#         # print(f"Target lengths: {batch.get('text_encoded_length', None)}")
-#         # print(f"Output lengths: {log_probs_length}")
-#         # print(f"Actual output time dim: {log_probs.size(1)}")
-
-#         return {"log_probs": log_probs, "log_probs_length": log_probs_length}
-
-#     def transform_input_lengths(self, input_lengths):
-#         """
-#         Calculate proper output lengths based on convolution operations:
-#         - All convs now have stride (2,1) in time dimension
-#         Total time reduction: 2^3 = 8 in frequency only
-#         """
-#         lengths = ((input_lengths - 1) // 2) + 1  # Only one time reduction in first conv
-#         return lengths.long()
-    
-# ##### WORKING VERSION #####
-
-
-##### IMPROVED STABILITY #####
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 class DeepSpeech2Model(nn.Module):
-    """
-    Deep Speech 2 Model: Convolutional + Recurrent Network with Clipped ReLU,
-    Batch Normalization, Dropout, and Fully Connected Layer.
-    """
-
-    def __init__(self, n_feats, n_tokens, rnn_hidden=512, rnn_layers=5, bidirectional=True, dropout_p=0.1):
-        """
-        Args:
-            n_feats (int): Number of input features (frequency bins).
-            n_tokens (int): Number of output tokens (vocabulary size).
-            rnn_hidden (int): Number of hidden units in RNN layers.
-            rnn_layers (int): Number of RNN layers.
-            bidirectional (bool): Use bidirectional RNNs.
-            dropout_p (float): Dropout probability.
-        """
+    def __init__(self, n_feats, n_tokens, rnn_hidden=512, rnn_layers=5, bidirectional=True):
         super().__init__()
         self.rnn_hidden = rnn_hidden
         self.rnn_layers_count = rnn_layers
         self.bidirectional = bidirectional
         self.n_tokens = n_tokens
         self.n_feats = n_feats
-        self.dropout_p = dropout_p
 
-        # Convolutional Layers
+        # Modify convolution layers to reduce less in time dimension
         self.conv_layers = nn.Sequential(
+            # Reduce stride in time dimension from (2,2) to (2,1)
             nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 1), padding=(20, 5)),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
-
             nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
-
             nn.Conv2d(32, 96, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
             nn.BatchNorm2d(96),
             nn.ReLU(inplace=True),
         )
 
-        # Placeholder for RNN Layers and Fully Connected
+        # RNN layers and FC will be lazily initialized
         self.rnn_layers = None
-        self.batch_norms = None
         self.fc = None
-        self.dropout = None
 
     def forward(self, spectrogram, spectrogram_length, **batch):
         """
@@ -1276,22 +1157,19 @@ class DeepSpeech2Model(nn.Module):
         # Input shape: (B, F, T) -> (B, 1, F, T)
         x = spectrogram.unsqueeze(1)
 
-        # Pass through Convolutional layers
+        # Pass through convolutional layers
         x = self.conv_layers(x)  # Shape: (B, C, F', T')
         B, C, Freq, Time = x.size()
 
         # Flatten for RNN input: (B, T', C*F')
         x = x.permute(0, 3, 1, 2).contiguous().view(B, Time, C * Freq)
 
-        # Initialize RNN and FC layers dynamically if needed
+        # Dynamically initialize RNN layers if needed
         if self.rnn_layers is None:
             input_size = C * Freq
             self.rnn_layers = nn.ModuleList([
                 nn.GRU(input_size=input_size if i == 0 else self.rnn_hidden * (2 if self.bidirectional else 1),
-                       hidden_size=self.rnn_hidden,
-                       num_layers=1,
-                       batch_first=True,
-                       bidirectional=self.bidirectional)
+                    hidden_size=self.rnn_hidden, num_layers=1, batch_first=True, bidirectional=self.bidirectional)
                 for i in range(self.rnn_layers_count)
             ])
             self.batch_norms = nn.ModuleList([
@@ -1299,34 +1177,156 @@ class DeepSpeech2Model(nn.Module):
                 for _ in range(self.rnn_layers_count)
             ])
             self.fc = nn.Linear(self.rnn_hidden * (2 if self.bidirectional else 1), self.n_tokens)
-            self.dropout = nn.Dropout(p=self.dropout_p)
-            self.to(x.device)  # Ensure layers are on correct device
+            self.to(x.device)
 
-        # Pass through RNN layers with BatchNorm, Dropout, and Clipped ReLU
+        # Pass through RNN layers with BatchNorm
         for rnn, bn in zip(self.rnn_layers, self.batch_norms):
-            x, _ = rnn(x)  # Shape: (B, T, Features)
-            x = bn(x.transpose(1, 2)).transpose(1, 2)  # Sequence-wise BN
-            x = torch.clamp(F.relu(x), min=0, max=20)  # Clipped ReLU
-            x = self.dropout(x)
+            x, _ = rnn(x)
+            x = bn(x.transpose(1, 2)).transpose(1, 2)
 
         # Fully connected layer for character probabilities
-        x = self.fc(x)  # Shape: (B, T, n_tokens)
+        x = self.fc(x)  # Shape: (B, T', n_tokens)
 
-        # Apply log_softmax for CTC Loss
-        log_probs = F.log_softmax(x, dim=-1)
+        # Apply log_softmax - keep in (B, T, C) format
+        log_probs = nn.functional.log_softmax(x, dim=-1)
 
-        # Calculate output lengths
+        # Calculate output lengths based on the actual sequence reduction
         log_probs_length = self.transform_input_lengths(spectrogram_length)
+
+        # Debug prints
+        # print("\nLength check:")
+        # print(f"Target lengths: {batch.get('text_encoded_length', None)}")
+        # print(f"Output lengths: {log_probs_length}")
+        # print(f"Actual output time dim: {log_probs.size(1)}")
 
         return {"log_probs": log_probs, "log_probs_length": log_probs_length}
 
     def transform_input_lengths(self, input_lengths):
         """
-        Adjust lengths based on convolutional time downsampling.
-        Total time reduction factor = 2 from first Conv layer.
+        Calculate proper output lengths based on convolution operations:
+        - All convs now have stride (2,1) in time dimension
+        Total time reduction: 2^3 = 8 in frequency only
         """
-        lengths = ((input_lengths - 1) // 2) + 1
+        lengths = ((input_lengths - 1) // 2) + 1  # Only one time reduction in first conv
         return lengths.long()
+    
+##### WORKING VERSION #####
 
 
 ##### IMPROVED STABILITY #####
+
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+
+# class DeepSpeech2Model(nn.Module):
+#     """
+#     Deep Speech 2 Model: Convolutional + Recurrent Network with Clipped ReLU,
+#     Batch Normalization, Dropout, and Fully Connected Layer.
+#     """
+
+#     def __init__(self, n_feats, n_tokens, rnn_hidden=512, rnn_layers=5, bidirectional=True, dropout_p=0.3):
+#         """
+#         Args:
+#             n_feats (int): Number of input features (frequency bins).
+#             n_tokens (int): Number of output tokens (vocabulary size).
+#             rnn_hidden (int): Number of hidden units in RNN layers.
+#             rnn_layers (int): Number of RNN layers.
+#             bidirectional (bool): Use bidirectional RNNs.
+#             dropout_p (float): Dropout probability.
+#         """
+#         super().__init__()
+#         self.rnn_hidden = rnn_hidden
+#         self.rnn_layers_count = rnn_layers
+#         self.bidirectional = bidirectional
+#         self.n_tokens = n_tokens
+#         self.n_feats = n_feats
+#         self.dropout_p = dropout_p
+
+#         # Convolutional Layers
+#         self.conv_layers = nn.Sequential(
+#             nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 1), padding=(20, 5)),
+#             nn.BatchNorm2d(32),
+#             nn.ReLU(inplace=True),
+
+#             nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
+#             nn.BatchNorm2d(32),
+#             nn.ReLU(inplace=True),
+
+#             nn.Conv2d(32, 96, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
+#             nn.BatchNorm2d(96),
+#             nn.ReLU(inplace=True),
+#         )
+
+#         # Placeholder for RNN Layers and Fully Connected
+#         self.rnn_layers = None
+#         self.batch_norms = None
+#         self.fc = None
+#         self.dropout = None
+
+#     def forward(self, spectrogram, spectrogram_length, **batch):
+#         """
+#         Forward pass of DeepSpeech2.
+#         Args:
+#             spectrogram (Tensor): Input spectrogram of shape (B, F, T).
+#             spectrogram_length (Tensor): Original spectrogram lengths.
+#         Returns:
+#             dict: Contains "log_probs" and "log_probs_length".
+#         """
+#         # Input shape: (B, F, T) -> (B, 1, F, T)
+#         x = spectrogram.unsqueeze(1)
+
+#         # Pass through Convolutional layers
+#         x = self.conv_layers(x)  # Shape: (B, C, F', T')
+#         B, C, Freq, Time = x.size()
+
+#         # Flatten for RNN input: (B, T', C*F')
+#         x = x.permute(0, 3, 1, 2).contiguous().view(B, Time, C * Freq)
+
+#         # Initialize RNN and FC layers dynamically if needed
+#         if self.rnn_layers is None:
+#             input_size = C * Freq
+#             self.rnn_layers = nn.ModuleList([
+#                 nn.GRU(input_size=input_size if i == 0 else self.rnn_hidden * (2 if self.bidirectional else 1),
+#                        hidden_size=self.rnn_hidden,
+#                        num_layers=1,
+#                        batch_first=True,
+#                        bidirectional=self.bidirectional)
+#                 for i in range(self.rnn_layers_count)
+#             ])
+#             self.batch_norms = nn.ModuleList([
+#                 nn.BatchNorm1d(self.rnn_hidden * (2 if self.bidirectional else 1))
+#                 for _ in range(self.rnn_layers_count)
+#             ])
+#             self.fc = nn.Linear(self.rnn_hidden * (2 if self.bidirectional else 1), self.n_tokens)
+#             self.dropout = nn.Dropout(p=self.dropout_p)
+#             self.to(x.device)  # Ensure layers are on correct device
+
+#         # Pass through RNN layers with BatchNorm, Dropout, and Clipped ReLU
+#         for rnn, bn in zip(self.rnn_layers, self.batch_norms):
+#             x, _ = rnn(x)  # Shape: (B, T, Features)
+#             x = bn(x.transpose(1, 2)).transpose(1, 2)  # Sequence-wise BN
+#             x = torch.clamp(F.relu(x), min=0, max=20)  # Clipped ReLU
+#             x = self.dropout(x)
+
+#         # Fully connected layer for character probabilities
+#         x = self.fc(x)  # Shape: (B, T, n_tokens)
+
+#         # Apply log_softmax for CTC Loss
+#         log_probs = F.log_softmax(x, dim=-1)
+
+#         # Calculate output lengths
+#         log_probs_length = self.transform_input_lengths(spectrogram_length)
+
+#         return {"log_probs": log_probs, "log_probs_length": log_probs_length}
+
+#     def transform_input_lengths(self, input_lengths):
+#         """
+#         Adjust lengths based on convolutional time downsampling.
+#         Total time reduction factor = 2 from first Conv layer.
+#         """
+#         lengths = ((input_lengths - 1) // 2) + 1
+#         return lengths.long()
+
+
+# ##### IMPROVED STABILITY #####

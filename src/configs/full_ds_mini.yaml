@@ -10,7 +10,7 @@ defaults:
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 5e-5 # using lower; 3e-4 default
+  lr: 3e-4 # using lower; 3e-4 default
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
   max_lr: 1e-2
@@ -26,7 +26,7 @@ text_encoder:
   binary_path: 3-gram_lc.bin
   # arpa_path: ~
   # binary_path: ~
-  lm_weight: 0.05 # less for lighter model
+  lm_weight: 0.3 # less for lighter model
   # lm_weight: 0
   unigram_path: librispeech-vocab.txt
   # unigram_path: ~
