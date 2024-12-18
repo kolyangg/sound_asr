@@ -22,6 +22,16 @@ Follow these steps to install the project:
 
 0. (Optional) Create and activate new environment using [`conda`](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html) or `venv` ([`+pyenv`](https://github.com/pyenv/pyenv)).
 
+   o. `python 3.12` install (if needed)
+   ```bash
+   apt update && apt upgrade -y
+   apt install software-properties-common -y
+   add-apt-repository ppa:deadsnakes/ppa
+   apt update
+   apt install python3.12
+   python3.12 --version
+   ```
+   
    a. `conda` version:
 
    ```bash
@@ -43,6 +53,7 @@ Follow these steps to install the project:
    python3 -m venv project_env
 
    # activate env
+   source activate base
    source project_env
    ```
 
