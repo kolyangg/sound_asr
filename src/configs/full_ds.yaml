@@ -26,12 +26,13 @@ text_encoder:
   binary_path: 3-gram_lc.bin
   # arpa_path: ~
   # binary_path: ~
-  lm_weight: 0.05 # less for lighter model
+  lm_weight: 0.15 # less for lighter model
   # lm_weight: 0
   unigram_path: librispeech-vocab.txt
   # unigram_path: ~
   use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
   pretrained_tokenizer: bert-base-uncased
+  beam_size: 100 # New input
 trainer:
   log_step: 200 # 50 default
   n_epochs: 100
@@ -48,4 +49,5 @@ trainer:
   seed: 1
   use_beam_search: True # to CHECK if working!!!
   use_lm: True # Seems to be working standalone, to check with beam search
-  max_grad_norm: 50.0 # Max norm of the gradients
+  beam_size: 100 # New input
+  # max_grad_norm: 50.0 # Max norm of the gradients
