@@ -10,7 +10,7 @@ defaults:
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 3e-2 # 3e-4 default
+  lr: 3e-4 # 3e-4 default
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
   max_lr: 1e-2
@@ -32,11 +32,11 @@ text_encoder:
   # unigram_path: ~
   use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
   pretrained_tokenizer: bert-base-uncased
-  beam_size: 100 # New input
+  beam_size: 20 # New input
 trainer:
-  log_step: 200 # 50 default
+  log_step: 2000 # 50 default
   n_epochs: 100
-  epoch_len: 200 # 200 default
+  epoch_len: 500 # 200 default
   device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   # resume_from: ds1 # testing
@@ -44,12 +44,12 @@ trainer:
   override: True # if True, will override the previous run with the same name
   # monitor: "min val_WER_(Argmax)" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
   monitor: "min val_CER_(BeamSrch)" # updated
-  save_period: 50 # checkpoint each save_period epochs in addition to the best epoch
+  save_period: 1 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
   seed: 1
   use_beam_search: True # to CHECK if this switch if working here
   use_lm: True # Seems to be working standalone, to check with beam search
-  beam_size: 100 # New input (remove from trainer later)
+  beam_size: 20 # New input (remove from trainer later)
   # max_grad_norm: 50.0 # Max norm of the gradients
   
