@@ -95,9 +95,10 @@ class BeamSearchWERMetric(BaseMetric):
         beam_size = self.beam_size
         
         self.use_lm = self.text_encoder.lm is not None
+        use_lm = self.use_lm
         
         # debug part
-        print(f"BeamSearchWERMetric: beam_size={self.beam_size}, use_lm={use_lm}")
+        print(f"BeamSearchWERMetric: beam_size={self.beam_size}, use_lm={self.use_lm}")
         # self.use_lm = True
 
     def __call__(
