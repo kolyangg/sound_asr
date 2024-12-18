@@ -10,7 +10,7 @@ defaults:
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 3e-4 # 3e-4 default
+  lr: 3e-2 # 3e-4 default
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
   max_lr: 1e-2

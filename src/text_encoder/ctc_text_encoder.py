@@ -131,11 +131,6 @@ class CTCTextEncoder:
             print(f"Loaded {'binary' if self.binary_path else 'ARPA'} language model")
             
             
-            
-            
-            # # Get vocabulary without blank token
-            # labels = [c for c in self.vocab if c != self.BLANK_TOKEN]
-            
             # Ensure blank token is at index 0
             labels = [self.BLANK_TOKEN] + [c for c in self.vocab if c != self.BLANK_TOKEN]
             
@@ -188,7 +183,6 @@ class CTCTextEncoder:
                 unknown_chars = set([char for char in text if char not in self.char2ind])
                 raise Exception(f"Unknown chars: '{' '.join(unknown_chars)}'")
     
-
 
 
     @staticmethod

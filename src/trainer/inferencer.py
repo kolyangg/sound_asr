@@ -98,67 +98,6 @@ class Inferencer(BaseTrainer):
             part_logs[part] = logs
         return part_logs
 
-    # def process_batch(self, batch_idx, batch, metrics, part):
-    #     """
-    #     Run batch through the model, compute metrics, and
-    #     save predictions to disk.
-
-    #     Save directory is defined by save_path in the inference
-    #     config and current partition.
-
-    #     Args:
-    #         batch_idx (int): the index of the current batch.
-    #         batch (dict): dict-based batch containing the data from
-    #             the dataloader.
-    #         metrics (MetricTracker): MetricTracker object that computes
-    #             and aggregates the metrics. The metrics depend on the type
-    #             of the partition (train or inference).
-    #         part (str): name of the partition. Used to define proper saving
-    #             directory.
-    #     Returns:
-    #         batch (dict): dict-based batch containing the data from
-    #             the dataloader (possibly transformed via batch transform)
-    #             and model outputs.
-    #     """
-    #     # TODO change inference logic so it suits ASR assignment
-    #     # and task pipeline
-
-    #     batch = self.move_batch_to_device(batch)
-    #     batch = self.transform_batch(batch)  # transform batch on device -- faster
-
-    #     outputs = self.model(**batch)
-    #     batch.update(outputs)
-
-    #     if metrics is not None:
-    #         for met in self.metrics["inference"]:
-    #             metrics.update(met.name, met(**batch))
-
-    #     # Some saving logic. This is an example
-    #     # Use if you need to save predictions on disk
-
-    #     batch_size = batch["logits"].shape[0]
-    #     current_id = batch_idx * batch_size
-
-    #     for i in range(batch_size):
-    #         # clone because of
-    #         # https://github.com/pytorch/pytorch/issues/1995
-    #         logits = batch["logits"][i].clone()
-    #         label = batch["labels"][i].clone()
-    #         pred_label = logits.argmax(dim=-1)
-
-    #         output_id = current_id + i
-
-    #         output = {
-    #             "pred_label": pred_label,
-    #             "label": label,
-    #         }
-
-    #         if self.save_path is not None:
-    #             # you can use safetensors or other lib here
-    #             torch.save(output, self.save_path / part / f"output_{output_id}.pth")
-
-    #     return batch
-
     def process_batch(self, batch_idx, batch, metrics, part, use_beam_search=False, use_lm=False, beam_size=10):
         """
         Process batch during inference, with option to use beam search.
