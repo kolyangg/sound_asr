@@ -92,6 +92,8 @@ class BeamSearchCERMetric(BaseMetric):
         beam_size = self.beam_size
         self.use_lm = self.text_encoder.lm is not None
         use_lm = self.use_lm
+        
+        self.use_lm = True # TEMP FIX!!!
 
     def __call__(
         self, log_probs: Tensor, log_probs_length: Tensor, text: List[str], **kwargs
