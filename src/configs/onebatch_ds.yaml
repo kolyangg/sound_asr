@@ -1,11 +1,11 @@
 defaults:
   - model: ds2
   - writer: wandb
-  - metrics: ds2 # updated
+  - metrics: ds2_all # updated
   - datasets: onebatchtest
   - dataloader: onebatch
-  - transforms: example_only_instance # default
-  # - transforms: example_only_instance_more # example_only_instance default
+  # - transforms: example_only_instance # default
+  - transforms: example_only_instance_more # example_only_instance default
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
@@ -48,4 +48,7 @@ trainer:
   use_beam_search: True # to CHECK if working!!!
   beam_size: 10 # New input
   use_lm: True # Seems to be working standalone, to check with beam search
+  lm_weight_min: 0.15 # less for lighter model
+  lm_weight_max: 0.35 # less for lighter model
+  lm_warmup_epochs: 10 # less for lighter model
   # max_grad_norm: 400.0 # Max norm of the gradients

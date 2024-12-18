@@ -75,6 +75,9 @@ class BaseTrainer:
         self.lr_scheduler = lr_scheduler
         self.text_encoder = text_encoder
         self.batch_transforms = batch_transforms
+        self.lm_weight_min = config.trainer.get("lm_weight_min", 0.0)
+        self.lm_weight_max = config.trainer.get("lm_weight_max", 0.0)
+        self.lm_warmup_epochs = config.trainer.get("lm_warmup_epochs", 0)
 
         # define dataloaders
         self.train_dataloader = dataloaders["train"]
@@ -210,6 +213,16 @@ class BaseTrainer:
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
+        
+        # LM weight scheduling
+        if hasattr(self, 'text_encoder'):
+            if epoch < self.lm_warmup_epochs:
+                weight = self.lm_weight_min + (self.lm_weight_max - self.lm_weight_min) * ((epoch - 1) / self.lm_warmup_epochs)
+            else:
+                weight = self.lm_weight_max
+            
+            self.text_encoder.lm_weight = weight
+            print(f"LM weight: {weight}")
         
         # Get the appropriate dataloader for this epoch
         # train_dataloader = self.train_dataloader_wrapper.get_dataloader(epoch) # NEW ADDED!!!
