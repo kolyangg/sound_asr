@@ -2,7 +2,7 @@ defaults:
   - model: ds2
   - writer: server
   - metrics: ds2 # updated
-  - datasets: example_reg
+  - datasets: full_ds
   # - dataloader: sortagrad # new one to try!
   - dataloader: server
   - transforms: example_only_instance # default
