@@ -5,8 +5,8 @@ defaults:
   - datasets: full_ds
   # - dataloader: sortagrad # new one to try!
   - dataloader: server
-  - transforms: example_only_instance # default
-  # - transforms: example_only_instance_more # example_only_instance default
+  # - transforms: example_only_instance # default
+  - transforms: example_only_instance_more # example_only_instance default
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
@@ -36,7 +36,7 @@ text_encoder:
   # unigram_path: ~
   use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
   pretrained_tokenizer: bert-base-uncased
-  beam_size: 100 # New input
+  beam_size: 50 # New input
 trainer:
   log_step: 2000 # 50 default
   n_epochs: 100
@@ -54,6 +54,6 @@ trainer:
   seed: 1
   use_beam_search: True # to CHECK if this switch if working here
   use_lm: True # Seems to be working standalone, to check with beam search
-  beam_size: 100 # New input (remove from trainer later)
+  beam_size: 50 # New input (remove from trainer later)
   max_grad_norm: 400.0 # Max norm of the gradients
   
