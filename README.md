@@ -23,6 +23,7 @@ Follow these steps to install the project:
 0. (Optional) Create and activate new environment using [`conda`](https://conda.io/projects/conda/en/latest/user-guide/getting-started.html) or `venv` ([`+pyenv`](https://github.com/pyenv/pyenv)).
 
    o. `python 3.12` install (if needed)
+
    ```bash
    apt update && apt upgrade -y
    apt install software-properties-common -y
@@ -31,6 +32,16 @@ Follow these steps to install the project:
    apt install python3.12
    python3.12 --version
    ```
+   
+   o. install linux dependencies (needed for kenlm)
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install cmake
+   sudo apt-get install build-essential
+   sudo apt-get install libboost-all-dev
+   ```
+
    
    a. `conda` version:
 
