@@ -103,6 +103,7 @@ class Trainer(BaseTrainer):
         self, text, log_probs, log_probs_length, audio_path,
         examples_to_log=10, use_beam_search=False, use_lm=False, 
         beam_size = 10, **batch
+        # examples_to_log = 10 default
     ):
         """
         Log predictions with corrected greedy and beam search handling.

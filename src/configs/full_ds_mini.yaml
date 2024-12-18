@@ -10,11 +10,15 @@ defaults:
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 3e-2 # using lower; 3e-4 default
+  # lr: 3e-2 # using lower; 3e-4 default
+  lr: 2e-4 # NEW
+  weight_decay: 0.01 # NEW
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
-  max_lr: 1e-2
-  pct_start: 0.1
+  #max_lr: 1e-2
+  max_lr: 6e-4 # NEW
+  #pct_start: 0.1
+  pct_start: 0.2 # NEW, longer warm-up
   steps_per_epoch: ${trainer.epoch_len}
   epochs: ${trainer.n_epochs}
   anneal_strategy: cos
@@ -42,8 +46,8 @@ trainer:
   # resume_from: ds1 # testing
   device: auto # device name or "auto"
   override: True # if True, will override the previous run with the same name
-  # monitor: "min val_WER_(Argmax)" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
-  monitor: "min val_CER_(BeamSrch)" # updated
+  monitor: "min val_CER_(Argmax)" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
+  # monitor: "min val_CER_(BeamSrch)" # updated
   save_period: 50 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
@@ -51,5 +55,5 @@ trainer:
   use_beam_search: True # to CHECK if this switch if working here
   use_lm: True # Seems to be working standalone, to check with beam search
   beam_size: 100 # New input (remove from trainer later)
-  # max_grad_norm: 50.0 # Max norm of the gradients
+  max_grad_norm: 400.0 # Max norm of the gradients
   

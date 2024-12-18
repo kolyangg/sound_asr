@@ -245,7 +245,7 @@ class CTCTextEncoder:
             return "".join(decoded)
 
     
-    def ctc_beam_search(self, probs, beam_size: int = 100,
+    def ctc_beam_search(self, probs, beam_size: int = 40,
                        use_lm: bool = False, debug: bool = False) -> List[Tuple[str, float]]:
         """
         Beam search with enhanced BPE support
