@@ -9,42 +9,65 @@ from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
 from src.utils.io_utils import ROOT_PATH
 
-from src.datasets.sortagrad_dl import DataLoaderWrapper, SortaGradDataLoader
+# from src.datasets.sortagrad_dl import DataLoaderWrapper
 
 class BaseTrainer:
     """
     Base class for all trainers.
     """
+
     def __init__(
         self,
-        model: torch.nn.Module,
-        criterion: torch.nn.Module,
-        metrics: dict,
-        optimizer: torch.optim.Optimizer,
-        lr_scheduler: torch.optim.lr_scheduler._LRScheduler,
+        model,
+        criterion,
+        metrics,
+        optimizer,
+        lr_scheduler,
         text_encoder,
         config,
-        device: torch.device,
-        dataloaders: dict,
+        device,
+        dataloaders,
         logger,
         writer,
-        epoch_len: int = None,
-        skip_oom: bool = True,
-        batch_transforms: dict = None,
+        epoch_len=None,
+        skip_oom=True,
+        batch_transforms=None,
     ):
         """
-        Initialization method.
+        Args:
+            model (nn.Module): PyTorch model.
+            criterion (nn.Module): loss function for model training.
+            metrics (dict): dict with the definition of metrics for training
+                (metrics[train]) and inference (metrics[inference]). Each
+                metric is an instance of src.metrics.BaseMetric.
+            optimizer (Optimizer): optimizer for the model.
+            lr_scheduler (LRScheduler): learning rate scheduler for the
+                optimizer.
+            text_encoder (CTCTextEncoder): text encoder.
+            config (DictConfig): experiment config containing training config.
+            device (str): device for tensors and model.
+            dataloaders (dict[DataLoader]): dataloaders for different
+                sets of data.
+            logger (Logger): logger that logs output.
+            writer (WandBWriter | CometMLWriter): experiment tracker.
+            epoch_len (int | None): number of steps in each epoch for
+                iteration-based training. If None, use epoch-based
+                training (len(dataloader)).
+            skip_oom (bool): skip batches with the OutOfMemory error.
+            batch_transforms (dict[Callable] | None): transforms that
+                should be applied on the whole batch. Depend on the
+                tensor name.
         """
         self.is_train = True
 
         self.config = config
-        self.cfg_trainer = self.config["trainer"]
+        self.cfg_trainer = self.config.trainer
 
         self.device = device
         self.skip_oom = skip_oom
 
         self.logger = logger
-        self.log_step = self.cfg_trainer.get("log_step", 50)
+        self.log_step = config.trainer.get("log_step", 50)
 
         self.model = model
         self.criterion = criterion
@@ -53,62 +76,54 @@ class BaseTrainer:
         self.text_encoder = text_encoder
         self.batch_transforms = batch_transforms
 
-        self.epoch_len = epoch_len
-
-        # Define dataloaders
+        # define dataloaders
         self.train_dataloader = dataloaders["train"]
-
-        # Check if train_dataloader is an instance of SortaGradDataLoader
-        if isinstance(self.train_dataloader, SortaGradDataLoader):
-            print("Using SortaGradDataLoader.")
-            # No need to wrap with inf_loop since SortaGradDataLoader is infinite
-            self.train_dataloader_wrapper = self.train_dataloader
-            if self.epoch_len is None:
-                # Set epoch_len manually to the desired number of batches (e.g., 200)
-                self.epoch_len = config.trainer.epoch_len
-                print(f"Epoch length set to: {self.epoch_len}")
+        # self.train_dataloader_wrapper = DataLoaderWrapper(self.train_dataloader) # NEW ADDED!!!
+        # print('check train_dataloader')
+        # print(dataloaders['train'].dataset[0])
+        # print(self.train_dataloader.dataset[0])
+        if epoch_len is None:
+            # epoch-based training
+            self.epoch_len = len(self.train_dataloader)
         else:
-            print("Using standard DataLoader with inf_loop.")
-            # Wrap standard DataLoader with inf_loop to make it infinite
+            # iteration-based training
             self.train_dataloader = inf_loop(self.train_dataloader)
-            self.train_dataloader_wrapper = self.train_dataloader
-            if self.epoch_len is None:
-                # Set epoch_len based on the desired number of batches (e.g., 200)
-                self.epoch_len = config.trainer.epoch_len
-                print(f"Epoch length set to: {self.epoch_len}")
+            self.epoch_len = epoch_len
 
-        print(f"Final epoch length: {self.epoch_len}")
-
-        # Define evaluation dataloaders
         self.evaluation_dataloaders = {
             k: v for k, v in dataloaders.items() if k != "train"
         }
 
-        # Define epochs
-        self._last_epoch = 0  # Required for saving on interruption
+        # define epochs
+        self._last_epoch = 0  # required for saving on interruption
         self.start_epoch = 1
         self.epochs = self.cfg_trainer.n_epochs
 
-        # Configuration to monitor model performance and save best
-        self.save_period = self.cfg_trainer.save_period  # Checkpoint each save_period epochs
-        self.monitor = self.cfg_trainer.get("monitor", "off")  # Format: "mnt_mode mnt_metric"
+        # configuration to monitor model performance and save best
+
+        self.save_period = (
+            self.cfg_trainer.save_period
+        )  # checkpoint each save_period epochs
+        self.monitor = self.cfg_trainer.get(
+            "monitor", "off"
+        )  # format: "mnt_mode mnt_metric"
 
         if self.monitor == "off":
             self.mnt_mode = "off"
             self.mnt_best = 0
         else:
             self.mnt_mode, self.mnt_metric = self.monitor.split()
-            assert self.mnt_mode in ["min", "max"], "Monitor mode must be 'min' or 'max'."
+            assert self.mnt_mode in ["min", "max"]
 
-            self.mnt_best = float('inf') if self.mnt_mode == "min" else -float('inf')
-            self.early_stop = self.cfg_trainer.get("early_stop", float('inf'))
+            self.mnt_best = inf if self.mnt_mode == "min" else -inf
+            self.early_stop = self.cfg_trainer.get("early_stop", inf)
             if self.early_stop <= 0:
-                self.early_stop = float('inf')
+                self.early_stop = inf
 
-        # Setup visualization writer instance
+        # setup visualization writer instance
         self.writer = writer
 
-        # Define metrics
+        # define metrics
         self.metrics = metrics
         self.train_metrics = MetricTracker(
             *self.config.writer.loss_names,
@@ -122,7 +137,8 @@ class BaseTrainer:
             writer=self.writer,
         )
 
-        # Define checkpoint directory and initialize if required
+        # define checkpoint dir and init everything if required
+
         self.checkpoint_dir = (
             ROOT_PATH / config.trainer.save_dir / config.writer.run_name
         )
@@ -133,11 +149,7 @@ class BaseTrainer:
 
         if config.trainer.get("from_pretrained") is not None:
             self._from_pretrained(config.trainer.get("from_pretrained"))
-    
-    
-    
-    
-    
+
     def train(self):
         """
         Wrapper around training process to save model on keyboard interrupt.
@@ -182,108 +194,33 @@ class BaseTrainer:
             if stop_process:  # early_stop
                 break
 
-    # def _train_epoch(self, epoch):
-    #     """
-    #     Training logic for an epoch, including logging and evaluation on
-    #     non-train partitions.
-
-    #     Args:
-    #         epoch (int): current training epoch.
-    #     Returns:
-    #         logs (dict): logs that contain the average loss and metric in
-    #             this epoch.
-    #     """
-    #     self.is_train = True
-    #     self.model.train()
-    #     self.train_metrics.reset()
-    #     self.writer.set_step((epoch - 1) * self.epoch_len)
-    #     self.writer.add_scalar("epoch", epoch)
-        
-    #     # Get the appropriate dataloader for this epoch
-    #     train_dataloader = self.train_dataloader_wrapper.get_dataloader(epoch) # NEW ADDED!!!
-        
-    #     for batch_idx, batch in enumerate(
-    #         # tqdm(self.train_dataloader, desc="train", total=self.epoch_len)
-    #         tqdm(train_dataloader, desc="train", total=self.epoch_len) # NEW ADDED!!!
-    #     ):
-    #         # print('train_dataloader')
-    #         # print(self.train_dataloader)
-    #         # print(self.train_dataloader.dataset[0])
-    #         try:
-    #             batch = self.process_batch(
-    #                 batch,
-    #                 metrics=self.train_metrics,
-    #             )
-    #         except torch.cuda.OutOfMemoryError as e:
-    #             if self.skip_oom:
-    #                 self.logger.warning("OOM on batch. Skipping batch.")
-    #                 torch.cuda.empty_cache()  # free some memory
-    #                 continue
-    #             else:
-    #                 raise e
-
-    #         self.train_metrics.update("grad_norm", self._get_grad_norm())
-
-    #         # log current results
-    #         if batch_idx % self.log_step == 0:
-    #             self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
-    #             self.logger.debug(
-    #                 "Train Epoch: {} {} Loss: {:.6f}".format(
-    #                     epoch, self._progress(batch_idx), batch["loss"].item()
-    #                 )
-    #             )
-    #             self.writer.add_scalar(
-    #                 "learning rate", self.lr_scheduler.get_last_lr()[0]
-    #             )
-    #             self._log_scalars(self.train_metrics)
-    #             self._log_batch(batch_idx, batch)
-    #             # we don't want to reset train metrics at the start of every epoch
-    #             # because we are interested in recent train metrics
-    #             last_train_metrics = self.train_metrics.result()
-    #             self.train_metrics.reset()
-    #         if batch_idx + 1 >= self.epoch_len:
-    #             break
-
-    #     logs = last_train_metrics
-
-    #     # Run val/test
-    #     for part, dataloader in self.evaluation_dataloaders.items():
-    #         val_logs = self._evaluation_epoch(epoch, part, dataloader)
-    #         logs.update(**{f"{part}_{name}": value for name, value in val_logs.items()})
-
-    #     return logs
-    
-    def _train_epoch(self, epoch: int) -> dict:
+    def _train_epoch(self, epoch):
         """
-        Training logic for a single epoch, including logging and evaluation.
+        Training logic for an epoch, including logging and evaluation on
+        non-train partitions.
 
         Args:
-            epoch (int): Current training epoch.
+            epoch (int): current training epoch.
         Returns:
-            logs (dict): Dictionary containing average loss and metrics for this epoch.
+            logs (dict): logs that contain the average loss and metric in
+                this epoch.
         """
-        print(f"\nStarting training for epoch {epoch}")
         self.is_train = True
         self.model.train()
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
         
-        # Create an iterator from the train_dataloader_wrapper
-        train_dataloader_iter = iter(self.train_dataloader_wrapper)
-        print(f"Training dataloader for epoch {epoch} has {self.epoch_len} batches")
+        # Get the appropriate dataloader for this epoch
+        # train_dataloader = self.train_dataloader_wrapper.get_dataloader(epoch) # NEW ADDED!!!
         
-        last_train_metrics = {}
-
-        for batch_idx in range(self.epoch_len):
-            try:
-                batch = next(train_dataloader_iter)
-            except StopIteration:
-                # This should not happen as DataLoaders are either infinite or properly handled
-                print("Dataloader exhausted unexpectedly.")
-                break
-
-            # print(f"Epoch {epoch}, Batch {batch_idx + 1}/{self.epoch_len}")
+        for batch_idx, batch in enumerate(
+            tqdm(self.train_dataloader, desc="train", total=self.epoch_len)
+            # tqdm(train_dataloader, desc="train", total=self.epoch_len) # NEW ADDED!!!
+        ):
+            # print('train_dataloader')
+            # print(self.train_dataloader)
+            # print(self.train_dataloader.dataset[0])
             try:
                 batch = self.process_batch(
                     batch,
@@ -291,45 +228,42 @@ class BaseTrainer:
                 )
             except torch.cuda.OutOfMemoryError as e:
                 if self.skip_oom:
-                    print("OOM on batch. Skipping batch.")
-                    torch.cuda.empty_cache()  # Free some memory
+                    self.logger.warning("OOM on batch. Skipping batch.")
+                    torch.cuda.empty_cache()  # free some memory
                     continue
                 else:
                     raise e
 
             self.train_metrics.update("grad_norm", self._get_grad_norm())
 
-            # Log current results
+            # log current results
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
-                print(
-                    f"Train Epoch: {epoch} [{self._progress(batch_idx)}] Loss: {batch['loss'].item():.6f}"
+                self.logger.debug(
+                    "Train Epoch: {} {} Loss: {:.6f}".format(
+                        epoch, self._progress(batch_idx), batch["loss"].item()
+                    )
                 )
                 self.writer.add_scalar(
                     "learning rate", self.lr_scheduler.get_last_lr()[0]
                 )
                 self._log_scalars(self.train_metrics)
                 self._log_batch(batch_idx, batch)
-                # Reset train metrics
+                # we don't want to reset train metrics at the start of every epoch
+                # because we are interested in recent train metrics
                 last_train_metrics = self.train_metrics.result()
                 self.train_metrics.reset()
             if batch_idx + 1 >= self.epoch_len:
-                print(f"Reached epoch length: {self.epoch_len} batches")
                 break
-
-        print(f"Completed training for epoch {epoch}")
 
         logs = last_train_metrics
 
-        # Run validation/test
+        # Run val/test
         for part, dataloader in self.evaluation_dataloaders.items():
-            print(f"Starting evaluation on {part} for epoch {epoch}")
             val_logs = self._evaluation_epoch(epoch, part, dataloader)
             logs.update(**{f"{part}_{name}": value for name, value in val_logs.items()})
-            print(f"Completed evaluation on {part} for epoch {epoch}")
 
         return logs
-
 
     def _evaluation_epoch(self, epoch, part, dataloader):
         """
