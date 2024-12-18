@@ -12,6 +12,11 @@ CURRENT_DIR=$(pwd)
 INPUT_ARPA=$1
 OUTPUT_BIN=$2
 
+# Install dependencies for kenlm
+conda install -c conda-forge eigen boost
+export Eigen3_DIR=$CONDA_PREFIX/include/eigen3
+export BOOST_ROOT=$CONDA_PREFIX
+
 # Clone the kenlm repository
 git clone https://github.com/kpu/kenlm.git
 
