@@ -1,0 +1,7 @@
+_target_: src.model.ConformerModel
+
+d_model: 144          # Input frequency dimension
+# n_tokens: 29          # Output vocabulary size
+num_layers: 16
+d_decoder: 320
+n_feats: 128

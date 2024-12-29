@@ -174,6 +174,7 @@ class BaseTrainer:
         """
         not_improved_count = 0
         for epoch in range(self.start_epoch, self.epochs + 1):
+            self.text_encoder.printed_samples = 0 # reset counter
             self._last_epoch = epoch
             result = self._train_epoch(epoch)
 
@@ -222,7 +223,10 @@ class BaseTrainer:
                 weight = self.lm_weight_max
             
             self.text_encoder.lm_weight = weight
-            print(f"LM weight: {weight}")
+            if self.text_encoder.use_lm:
+                print(f"LM weight: {weight}")
+            else:
+                print("No LM used")
         
         # Get the appropriate dataloader for this epoch
         # train_dataloader = self.train_dataloader_wrapper.get_dataloader(epoch) # NEW ADDED!!!
@@ -239,6 +243,15 @@ class BaseTrainer:
                     batch,
                     metrics=self.train_metrics,
                 )
+                # # In _train_epoch, after fetching a batch
+                # if batch_idx < 2:  # print info for first two batches each epoch
+                #     print(f"\n[DEBUG] Epoch {epoch}, Batch {batch_idx}:")
+                #     print("Raw Transcripts:", batch['text'][:2])  # print first two transcripts
+                #     # Encode transcripts using text_encoder and print the indices
+                #     for i, t in enumerate(batch['text'][:2]):
+                #         encoded = self.text_encoder.encode(t).tolist()
+                #         print(f"Encoded transcript {i}: {encoded}")
+
             except torch.cuda.OutOfMemoryError as e:
                 if self.skip_oom:
                     self.logger.warning("OOM on batch. Skipping batch.")
@@ -544,6 +557,18 @@ class BaseTrainer:
                 "Warning: Architecture configuration given in the config file is different from that "
                 "of the checkpoint. This may yield an exception when state_dict is loaded."
             )
+        
+        # self.model
+        n_feats = 128  # Input frequency dimension
+        n_tokens = 29  # Adjust this if needed
+        device = self.device
+        dummy_input = torch.randn(1, n_feats, 100).to(device)  # (B, F, T)
+        dummy_length = torch.tensor([100]).to(device)
+        
+        
+        
+        self.model(dummy_input, dummy_length)
+        
         self.model.load_state_dict(checkpoint["state_dict"])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.

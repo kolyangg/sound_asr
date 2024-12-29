@@ -1,0 +1,4 @@
+_target_: torch.utils.data.DataLoader
+batch_size: 10 # 10 default; 80 works for server without BPE
+num_workers: 16 # 2 default
+pin_memory: True

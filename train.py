@@ -38,14 +38,18 @@ def main(config):
     text_encoder = instantiate(config.text_encoder)
     
     # Test the LM
-    if text_encoder.lm is not None:
-        text_encoder.test_language_model()
-        text_encoder.test_kenlm_directly()
-        
-        print(f"LM Info:")
-        print(f"Order: {text_encoder.lm.order}")
-    # print(f"Vocabulary size: {len(list(text_encoder.lm.vocab_list()))}")
-
+    LM_test = False
+    try:
+        if text_encoder.lm is not None:
+            if LM_test:
+                text_encoder.test_language_model()
+            text_encoder.test_kenlm_directly()
+            
+            print(f"LM Info:")
+            print(f"Order: {text_encoder.lm.order}")
+        # print(f"Vocabulary size: {len(list(text_encoder.lm.vocab_list()))}")
+    except:
+        pass
     # setup data_loader instances
     # batch_transforms should be put on device
     dataloaders, batch_transforms = get_dataloaders(config, text_encoder, device)

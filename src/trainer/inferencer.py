@@ -84,6 +84,9 @@ class Inferencer(BaseTrainer):
             # init model
             self._from_pretrained(config.inferencer.get("from_pretrained"))
 
+        #
+        self.text_encoder.lm_weight = self.config.text_encoder.lm_weight
+
     def run_inference(self):
         """
         Run inference on each partition.
@@ -114,6 +117,13 @@ class Inferencer(BaseTrainer):
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)
 
+        lm_weight = self.text_encoder.lm_weight
+
+        # print('Inference:')
+        # print("use_lm: ", use_lm)
+        # print("beam_size: ", beam_size)
+        # print("lm_weight: ", lm_weight)
+
         with torch.no_grad():
             outputs = self.model(**batch)
             batch.update(outputs)
@@ -121,19 +131,26 @@ class Inferencer(BaseTrainer):
             if use_beam_search:
                 log_probs = outputs["log_probs"]
                 probs = torch.exp(log_probs)
+                probs = probs.cpu() # TRY
                 
                 batch_predictions = []
                 for i in range(probs.size(0)):
                     seq_len = batch["log_probs_length"][i]
                     sequence_probs = probs[i, :seq_len]
                     
-                    if use_lm:
-                        # Use beam search with LM
-                        beam_results = self.text_encoder.ctc_beam_search_with_lm(sequence_probs, beam_size=10)
-                    else:
-                        # Use regular beam search
-                        beam_results = self.text_encoder.ctc_beam_search(sequence_probs, beam_size=10)
+
+                    # if use_lm:
+                    #     # Use beam search with LM
+                    #     beam_results = self.text_encoder.ctc_beam_search_with_lm(sequence_probs, beam_size=10)
+                    # else:
+                    #     # Use regular beam search
+                    #     beam_results = self.text_encoder.ctc_beam_search(sequence_probs, beam_size=10)
                     
+                    beam_results = self.text_encoder.ctc_beam_search(
+                        sequence_probs.numpy(), beam_size=beam_size, use_lm=use_lm, debug=False
+                    )
+
+
                     best_text = beam_results[0][0]  # First beam result, text
                     batch_predictions.append(best_text)
                 
@@ -161,7 +178,7 @@ class Inferencer(BaseTrainer):
             # Decode ground truth
             batch["ground_truth"] = []
             for encoded in batch["text_encoded"]:
-                text = self.text_encoder.decode(encoded)
+                text = self.text_encoder.ctc_decode(encoded)
                 if self.text_encoder.use_bpe:
                     text = self.text_encoder.tokenizer.clean_up_tokenization(text)
                 batch["ground_truth"].append(text)

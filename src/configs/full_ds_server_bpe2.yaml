@@ -1,0 +1,61 @@
+defaults:
+  - model: ds2
+  - writer: server
+  - metrics: ds2_all # updated
+  - datasets: full_ds_lowval
+  # - dataloader: sortagrad # new one to try!
+  - dataloader: server
+  # - transforms: example_only_instance # default
+  - transforms: example_only_instance_more # example_only_instance default
+  - _self_
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 2e-4 # using lower; 3e-4 default
+  # lr: 2e-4 # NEW
+  weight_decay: 0.01 # NEW
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.OneCycleLR
+  #max_lr: 1e-2
+  max_lr: 6e-4 # NEW
+  #pct_start: 0.1
+  pct_start: 0.2 # NEW, longer warm-up
+  steps_per_epoch: ${trainer.epoch_len}
+  epochs: ${trainer.n_epochs}
+  anneal_strategy: cos
+loss_function:
+  _target_: src.loss.CTCLossWrapper
+text_encoder:
+  _target_: src.text_encoder.CTCTextEncoder
+  # arpa_path: 3-gram_lc.arpa
+  arpa_path: 4-gram_lc_correct.arpa
+  # binary_path: 3-gram_lc.bin
+  binary_path: 4-gram_lc_correct.bin
+  # arpa_path: ~
+  # binary_path: ~
+  lm_weight: 0.1 # less for lighter model
+  # lm_weight: 0
+  unigram_path: librispeech-vocab.txt
+  # unigram_path: ~
+  use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
+  pretrained_tokenizer: bert-base-uncased
+  beam_size: 50 # New input
+trainer:
+  log_step: 250 # 50 default
+  n_epochs: 100
+  epoch_len: 4000 # 200 default
+  device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
+  resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
+  # resume_from: ds1 # testing
+  device: auto # device name or "auto"
+  override: True # if True, will override the previous run with the same name
+  monitor: "min val_CER_(Argmax)" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
+  # monitor: "min val_CER_(BeamSrch)" # updated
+  save_period: 1 # checkpoint each save_period epochs in addition to the best epoch
+  early_stop: ${trainer.n_epochs} # epochs for early stopping
+  save_dir: "saved"
+  seed: 1
+  use_beam_search: True # to CHECK if this switch if working here
+  use_lm: False # Seems to be working standalone, to check with beam search
+  beam_size: 10 # New input (remove from trainer later)
+  max_grad_norm: 400.0 # Max norm of the gradients
+  

@@ -28,8 +28,6 @@ class Trainer(BaseTrainer):
         outputs = self.model(**batch)
         batch.update(outputs)
         
-
-
         all_losses = self.criterion(**batch)
         # print(f"\nLoss value: {all_losses['loss'].item()}")
          
@@ -73,7 +71,7 @@ class Trainer(BaseTrainer):
                 if hasattr(self.text_encoder, 'lm') and self.text_encoder.lm is not None:
                     self.log_predictions(**batch, use_beam_search=True, use_lm=True, beam_size = self.config.trainer.beam_size)
                     
-    
+        
     def _log_batch(self, batch_idx, batch, mode="train"):
         """
         Log batch with added support for beam search and LM during inference
@@ -102,21 +100,21 @@ class Trainer(BaseTrainer):
     def log_predictions(
         self, text, log_probs, log_probs_length, audio_path,
         examples_to_log=10, use_beam_search=False, use_lm=False, 
-        beam_size = 10, **batch
-        # examples_to_log = 10 default
+        beam_size=10, **batch
     ):
         """
         Log predictions with corrected greedy and beam search handling.
         Consistency ensured with ctc_beam_search.
         """
-        debug = False
+        debug1 = False
+        debug2 = True
         
         rows = {}
         log_probs = log_probs.cpu()
         log_probs_length = log_probs_length.cpu()
 
         # Greedy decoding
-        if debug:
+        if debug1:
             print("\n=== Debug: Greedy Decoding ===")
         argmax_inds = log_probs.argmax(-1).numpy()
         argmax_inds = [
@@ -124,13 +122,15 @@ class Trainer(BaseTrainer):
         ]
         greedy_predictions = []
         for i, inds in enumerate(argmax_inds):
-            pred = self.text_encoder.ctc_decode(inds)
+            # Convert list of indices to torch.Tensor
+            inds_tensor = torch.tensor(inds)
+            pred = self.text_encoder.ctc_decode(inds_tensor)
             greedy_predictions.append(pred)
-            if debug:
+            if debug1:
                 print(f"Example {i}: Greedy Prediction -> '{pred}'")
 
         # Beam search decoding
-        if debug:
+        if debug1:
             print("\n=== Debug: Beam Search Decoding ===")
         beam_predictions = []
         probs = torch.exp(log_probs)  # Convert log_probs to probabilities
@@ -138,13 +138,13 @@ class Trainer(BaseTrainer):
             seq_len = log_probs_length[i]
             sequence_probs = probs[i, :seq_len]
 
-            # Perform beam search
+            # Perform beam search with dynamic beam_size
             beam_results = self.text_encoder.ctc_beam_search(
-                sequence_probs.numpy(), beam_size=10, use_lm=use_lm, debug=False
+                sequence_probs.numpy(), beam_size=beam_size, use_lm=use_lm, debug=False
             )
             best_prediction = beam_results[0][0]  # Top beam result
             beam_predictions.append(best_prediction)
-            if debug:
+            if debug1:
                 print(f"Example {i}: Beam Prediction -> '{best_prediction}'")
 
         # Compare and log results
@@ -157,7 +157,7 @@ class Trainer(BaseTrainer):
             cer_greedy = calc_cer(target, greedy_pred) * 100
             cer_beam = calc_cer(target, beam_pred) * 100
 
-            if debug:
+            if debug2:
                 print(f"\n=== Example {i} Comparison ===")
                 print(f"Target Text      : '{target}'")
                 print(f"Greedy Prediction: '{greedy_pred}' (CER: {cer_greedy:.2f})")
@@ -180,6 +180,9 @@ class Trainer(BaseTrainer):
 
         self.writer.add_table(table_name, pd.DataFrame.from_dict(rows, orient="index"))
 
-
-
+    
+    
+    
     ### AFTER FIXING BEAM SEARCH ###
+    
+    

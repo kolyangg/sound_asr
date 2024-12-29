@@ -6,7 +6,7 @@ import editdistance
 def calc_cer(target_text, predicted_text) -> float:
     # TODO
     
-    debug = True
+    debug = False
     # Check inputs
     if debug:
         print('target_text:', target_text)

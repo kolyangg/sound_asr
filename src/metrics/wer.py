@@ -10,7 +10,6 @@ from src.metrics.utils import calc_wer
 # Note: they can be written in a pretty way
 # Note 2: overall metric design can be significantly improved
 
-
 class ArgmaxWERMetric(BaseMetric):
     def __init__(self, text_encoder, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -20,14 +19,14 @@ class ArgmaxWERMetric(BaseMetric):
         self, log_probs: Tensor, log_probs_length: Tensor, text: List[str], **kwargs
     ):
         wers = []
-        predictions = torch.argmax(log_probs.cpu(), dim=-1).numpy()
-        lengths = log_probs_length.detach().numpy()
+        predictions = torch.argmax(log_probs.cpu(), dim=-1).numpy()  # Shape: [batch_size, time_steps]
+        lengths = log_probs_length.detach().numpy()  # Shape: [batch_size]
+
         for log_prob_vec, length, target_text in zip(predictions, lengths, text):
             target_text = self.text_encoder.normalize_text(target_text)
-            pred_text = self.text_encoder.ctc_decode(log_prob_vec[:length])
+            # Use decode_indices instead of ctc_decode since log_prob_vec are indices
+            pred_text = self.text_encoder.decode_indices(log_prob_vec[:length])
             wers.append(calc_wer(target_text, pred_text))
-            # print('wers:')
-            # print(wers)
         return sum(wers) / len(wers)
 
 
@@ -97,7 +96,8 @@ class BeamSearchWERMetric(BaseMetric):
         self.use_lm = self.text_encoder.lm is not None
         use_lm = self.use_lm
         
-        self.use_lm = True # TEMP FIX!!!
+        # self.use_lm = True # TEMP FIX!!!
+        self.use_lm = self.text_encoder.use_lm
         
         # debug part
         print(f"BeamSearchWERMetric: beam_size={self.beam_size}, use_lm={self.use_lm}")

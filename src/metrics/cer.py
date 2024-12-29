@@ -11,6 +11,8 @@ from src.metrics.utils import calc_cer
 # Note 2: overall metric design can be significantly improved
 
 
+# In cer.py
+
 class ArgmaxCERMetric(BaseMetric):
     def __init__(self, text_encoder, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -20,14 +22,15 @@ class ArgmaxCERMetric(BaseMetric):
         self, log_probs: Tensor, log_probs_length: Tensor, text: List[str], **kwargs
     ):
         cers = []
-        predictions = torch.argmax(log_probs.cpu(), dim=-1).numpy()
-        lengths = log_probs_length.detach().numpy()
+        predictions = torch.argmax(log_probs.cpu(), dim=-1).numpy()  # Shape: [batch_size, time_steps]
+        lengths = log_probs_length.detach().numpy()  # Shape: [batch_size]
+
         for log_prob_vec, length, target_text in zip(predictions, lengths, text):
             target_text = self.text_encoder.normalize_text(target_text)
-            pred_text = self.text_encoder.ctc_decode(log_prob_vec[:length])
+            # Use decode_indices instead of ctc_decode
+            pred_text = self.text_encoder.decode_indices(log_prob_vec[:length])
             cers.append(calc_cer(target_text, pred_text))
-            # print('cers:')
-            # print(cers)
+
         return sum(cers) / len(cers)
 
 
@@ -83,17 +86,15 @@ class ArgmaxCERMetric(BaseMetric):
         
 #         return sum(cers) / len(cers)
 
+# In trainer.py
 
 class BeamSearchCERMetric(BaseMetric):
     def __init__(self, text_encoder, beam_size=10, use_lm=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text_encoder = text_encoder
-        self.beam_size = self.text_encoder.beam_size
-        beam_size = self.beam_size
-        self.use_lm = self.text_encoder.lm is not None
-        use_lm = self.use_lm
-        
-        self.use_lm = True # TEMP FIX!!!
+        self.beam_size = beam_size  # Use the passed beam_size
+        # self.use_lm = use_lm and (self.text_encoder.lm is not None)  # Properly handle use_lm
+        self.use_lm = self.text_encoder.use_lm
 
     def __call__(
         self, log_probs: Tensor, log_probs_length: Tensor, text: List[str], **kwargs

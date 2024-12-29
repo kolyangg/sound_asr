@@ -17,7 +17,7 @@ class CTCLossWrapper(CTCLoss):
         # print(f"text_length shape: {text_encoded_length.shape}")
         # print(f"Batch size from log_probs: {log_probs.shape[1]}")
 
-        
+        # print(log_probs)        
         
         log_probs_t = torch.transpose(log_probs, 0, 1)
 
@@ -27,5 +27,7 @@ class CTCLossWrapper(CTCLoss):
             input_lengths=log_probs_length,
             target_lengths=text_encoded_length,
         )
+
+        # print(loss)
 
         return {"loss": loss}
