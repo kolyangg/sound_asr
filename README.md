@@ -84,6 +84,11 @@ Follow these steps to install the project:
    ./LM_setup.sh
    ```
 
+3. Run script to setup and train sentencepiece model for BPE:
+   ```bash
+   src/utils/sp_model.py
+   ```
+
 4. Login to wandb and provide API key when prompted:
    ```bash
    wandb login
