@@ -1,0 +1,55 @@
+train:
+  get_spectrogram:
+    _target_: torchaudio.transforms.MelSpectrogram
+    sample_rate: 16000
+
+  audio:
+    _target_: torchvision.transforms.v2.Compose
+    transforms:
+      - _target_: src.transforms.wav_augs.SpeedPerturb
+        speeds: [0.9, 1.0, 1.1]
+        p: 0.5
+        sample_rate: 16000
+
+      - _target_: src.transforms.wav_augs.gain.Gain
+        min_gain_in_db: -10
+        max_gain_in_db: 3
+        p: 0.3
+
+      - _target_: src.transforms.wav_augs.PitchShift
+        min_transpose_semitones: -2
+        max_transpose_semitones: 2
+        p: 0.3
+        sample_rate: 16000
+
+      - _target_: src.transforms.wav_augs.AddBackgroundNoise
+        background_paths: noise_samples
+        sample_rate: 16000
+        p: 0.4
+
+      - _target_: src.transforms.wav_augs.Shift
+        shift_max: 0.2  # up to 20% shift
+        rollover: True
+        p: 0.3
+
+      # - _target_: src.transforms.wav_augs.ApplyImpulseResponse
+      #   ir_path: impulse_responses  # folder with IR .wav files
+      #   sample_rate: 16000
+      #   p: 0.2
+
+  spectrogram:
+    _target_: torchvision.transforms.v2.Compose
+    transforms:
+      - _target_: src.transforms.spec_augs.FrequencyMasking
+        freq_mask_param: 20
+        p: 0.8   # apply freq mask 80% of the time
+      - _target_: src.transforms.spec_augs.TimeMasking
+        time_mask_param: 30
+        p: 0.8   # apply time mask 80% of the time
+
+inference:
+  get_spectrogram:
+    _target_: torchaudio.transforms.MelSpectrogram
+    sample_rate: 16000
+
+
