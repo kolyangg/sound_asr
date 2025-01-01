@@ -1,0 +1,30 @@
+train:
+  spectrogram: # name of the tensor on which we apply transform
+    _target_: torchvision.transforms.v2.Compose
+    # _args_:
+    transforms:
+        # Batch-level augmentations
+        - _target_: src.transforms.wav_augs.NormalizeBatch
+          mean: 0.5
+          std: 0.5
+        # Optionally, add noise across all batch samples
+        - _target_: src.transforms.wav_augs.BatchAdditiveNoise
+          noise_level: 0.01
+          p: 0.5
+
+# inference:
+#   data_object: # name of the tensor on which we apply transform
+#     _target_: torchvision.transforms.v2.Compose
+#     # _args_:
+#     transforms:
+#       - _target_: src.transforms.NormalizeBatch
+#           mean: 0.5
+#           std: 0.5
+
+inference:
+  spectrogram: # name of the tensor on which we apply transform
+    _target_: torch.nn.Sequential # to apply several transforms sequentially
+    _args_:
+      - _target_: src.transforms.wav_augs.NormalizeBatch
+        mean: 0.5
+        std: 0.5

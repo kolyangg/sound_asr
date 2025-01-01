@@ -1,5 +1,5 @@
 defaults:
-  - model: ds2
+  - model: ds2_alpha
   - metrics: ds2_all
   - datasets: full_ds_test # we do not want to run inference on training data
   - dataloader: server_small
@@ -22,7 +22,7 @@ text_encoder:
   binary_path: 4-gram_lc_correct.bin
   # arpa_path: ~
   # binary_path: ~
-  lm_weight: 0.5
+  lm_weight: 0.5 # 0.5
   unigram_path: librispeech-vocab.txt
   # unigram_path: ~
   use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!

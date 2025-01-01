@@ -1,0 +1,7 @@
+_target_: src.model.DeepSpeech2ModelNew
+
+n_feats: 128          # Input frequency dimension
+# n_tokens: 29          # Output vocabulary size
+rnn_hidden: 512      # Hidden size from paper
+rnn_layers: 5     # Number of RNN layers
+bidirectional: True   # Use bidirectional RNNs

@@ -135,3 +135,44 @@ class SpeedPerturb(nn.Module):
             out[i, :length] = wave_out
 
         return out
+
+
+#### Batch augs
+
+class NormalizeBatch(nn.Module):
+    def __init__(self, mean=0.0, std=1.0):
+        super().__init__()
+        self.mean = mean
+        self.std = std
+
+    def forward(self, batch):
+        """
+        Normalize a batch of spectrograms or audio.
+        Args:
+            batch (Tensor): Shape [B, F, T] or [B, T] (spectrogram or audio).
+        Returns:
+            Tensor: Normalized batch.
+        """
+        mean = batch.mean(dim=(1, 2), keepdim=True)  # Per-sample mean
+        std = batch.std(dim=(1, 2), keepdim=True)    # Per-sample std
+        return (batch - mean) / (std + 1e-6)  # Avoid divide-by-zero
+
+
+class BatchAdditiveNoise(nn.Module):
+    def __init__(self, noise_level=0.01, p=0.5):
+        super().__init__()
+        self.noise_level = noise_level
+        self.p = p
+
+    def forward(self, batch):
+        """
+        Add the same noise to all samples in the batch.
+        Args:
+            batch (Tensor): Shape [B, F, T] or [B, T].
+        Returns:
+            Tensor: Noisy batch.
+        """
+        if torch.rand(1).item() < self.p:
+            noise = torch.randn_like(batch) * self.noise_level
+            return batch + noise
+        return batch

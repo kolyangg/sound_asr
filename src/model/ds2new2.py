@@ -56,6 +56,8 @@ class DeepSpeech2Model(nn.Module):
         # Initialize weights
         self.apply(self.initialize_weights)
 
+        self.__str__()
+
     def compute_rnn_input_size(self):
         initial_freq_bins = self.n_feats  # Corrected
 
@@ -203,3 +205,22 @@ class DeepSpeech2Model(nn.Module):
                 p.append(temp)
                 s.append(stride_time)
         return p, s
+    
+
+
+
+    def __str__(self):
+        """
+        Model prints with the number of parameters.
+        """
+        all_parameters = sum([p.numel() for p in self.parameters()])
+        trainable_parameters = sum(
+            [p.numel() for p in self.parameters() if p.requires_grad]
+        )
+
+        result_info = super().__str__()
+        result_info = result_info + f"\nAll parameters: {all_parameters}"
+        result_info = result_info + f"\nTrainable parameters: {trainable_parameters}"
+
+        return result_info
+

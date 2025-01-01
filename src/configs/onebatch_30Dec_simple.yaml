@@ -1,5 +1,5 @@
 defaults:
-  - model: ds2 # ds2_31Dec # ds2_reg3
+  - model: ds2_simple2 # ds2_simple # ds2
   - writer: wandb
   - metrics: ds2 # updated
   - datasets: minibatch # onebatchtest # full_ds
@@ -43,9 +43,9 @@ text_encoder:
   beam_size: 1 # New input
   use_lm: False # True
 trainer:
-  log_step: 50 # 50 default
-  n_epochs: 125
-  epoch_len: 400 # 200 # 1000 # 200 default
+  log_step: 25 # 50 default
+  n_epochs: 5
+  epoch_len: 100 # 200 # 1000 # 200 default
   device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   # resume_from: model_best.pth
