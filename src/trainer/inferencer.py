@@ -168,7 +168,7 @@ class Inferencer(BaseTrainer):
                     text = self.text_encoder.decode(sequence)
                     if self.text_encoder.use_bpe:
                         # Clean up BPE tokens if needed
-                        text = self.text_encoder.tokenizer.clean_up_tokenization(text)
+                        text = self.text_encoder._clean_decoded_text(text)
                     
                     batch_predictions.append(text)
                 
@@ -180,7 +180,7 @@ class Inferencer(BaseTrainer):
             for encoded in batch["text_encoded"]:
                 text = self.text_encoder.ctc_decode(encoded)
                 if self.text_encoder.use_bpe:
-                    text = self.text_encoder.tokenizer.clean_up_tokenization(text)
+                    text = self.text_encoder._clean_decoded_text(text)
                 batch["ground_truth"].append(text)
 
             # Update metrics

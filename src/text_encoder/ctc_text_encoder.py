@@ -87,6 +87,9 @@ class CTCTextEncoder:
             self.lm = None
             self.decoder = None
 
+        
+        self.debug = True
+
     
     def _initialize_vocabulary(self, pretrained_tokenizer: str):
         """
@@ -152,42 +155,6 @@ class CTCTextEncoder:
 
 
 
-    def decode_simple(self, indices: List[int]) -> str:
-        """
-        Simple CTC decoding without language model.
-        Collapses consecutive duplicate tokens and removes blanks.
-
-        Parameters:
-        - indices (List[int]): List of token indices.
-
-        Returns:
-        - str: Decoded text.
-        """
-        decoded_chars = []
-        previous_idx = None
-
-        for idx in indices:
-            if idx == self.blank_index:
-                previous_idx = idx
-                continue  # Skip blank tokens
-            if idx == previous_idx:                   ##### TO TEST DELETION!!! #####
-                continue  # Skip duplicate tokens     ##### TO TEST DELETION!!! #####
-            if 0 <= idx < len(self.ind2char):
-                char = self.ind2char[idx]
-                decoded_chars.append(char)
-            previous_idx = idx
-
-        # Join characters without spaces and convert to lowercase
-        text = "".join(decoded_chars).strip().lower()
-
-        if self.use_bpe and self.processor:
-            return self.processor.tokenizer.clean_up_tokenization(text)
-        else:
-            return text
-
-
-
-
     def _initialize_language_model(self):
         """Initialize language model with explicit blank token handling."""
         self.lm = None
@@ -229,86 +196,250 @@ class CTCTextEncoder:
             self.decoder = None
 
     
+
+    # ### CURRENT VER ###
+
+    # def decode(self, indices: List[int]) -> str:
+    #     """
+    #     Decode indices to text using beam search decoder if available.
+
+    #     Parameters:
+    #     - indices (List[int]): List of token indices.
+
+    #     Returns:
+    #     - str: Decoded text.
+    #     """
+    #     if self.decoder:
+    #         decoded_text = self.decoder.decode(indices)
+    #         # Convert to lower case
+    #         decoded_text = decoded_text.lower()
+    #         return decoded_text
+    #     else:
+    #         decoded_text = self.decode_simple(indices)
+    #         # Convert to lower case
+    #         decoded_text = decoded_text.lower()
+    #         return decoded_text  # Ensure the decoded text is returned
+        
+
+    # def decode_simple(self, indices: List[int]) -> str:
+    #     """
+    #     Simple CTC decoding without language model.
+    #     Collapses consecutive duplicate tokens and removes blanks.
+
+    #     Parameters:
+    #     - indices (List[int]): List of token indices.
+
+    #     Returns:
+    #     - str: Decoded text.
+    #     """
+    #     decoded_chars = []
+    #     previous_idx = None
+
+    #     for idx in indices:
+    #         if idx == self.blank_index:
+    #             previous_idx = idx
+    #             continue  # Skip blank tokens
+    #         if idx == previous_idx:                   ##### TO TEST DELETION!!! #####
+    #             continue  # Skip duplicate tokens     ##### TO TEST DELETION!!! #####
+    #         if 0 <= idx < len(self.ind2char):
+    #             char = self.ind2char[idx]
+    #             decoded_chars.append(char)
+    #         previous_idx = idx
+
+    #     # Join characters without spaces and convert to lowercase
+    #     text = "".join(decoded_chars).strip().lower()
+
+    #     if self.use_bpe and self.processor:
+    #         return self.processor.tokenizer.clean_up_tokenization(text)
+    #     else:
+    #         return text
+
+   
+    # def decode_logits(self, logits: Union[torch.Tensor, List[List[float]], np.ndarray]) -> str:
+    #     """
+    #     Decode logits using the decoder if available, otherwise use greedy decoding.
+
+    #     Parameters:
+    #     - logits (Union[torch.Tensor, List[List[float]], np.ndarray]): Logits output from the model.
+
+    #     Returns:
+    #     - str: Decoded text.
+    #     """
+    #     if isinstance(logits, torch.Tensor):
+    #         logits = logits.cpu().numpy()
+    #     elif isinstance(logits, list):
+    #         logits = np.array(logits)
+    #     elif not isinstance(logits, np.ndarray):
+    #         raise TypeError("logits must be a torch.Tensor, list of lists, or numpy.ndarray")
+
+    #     if logits.ndim == 3:
+    #         logits = logits[0]
+
+    #     if logits.ndim != 2:
+    #         raise ValueError(f"Logits should be 2D (time_steps, vocab_size), got {logits.ndim}D")
+
+    #     if self.decoder:
+    #         decoded_text = self.decoder.decode(logits)
+    #         return decoded_text
+    #     else:
+    #         predicted_indices = np.argmax(logits, axis=-1).tolist()
+    #         return self.decode_simple(predicted_indices)
+
+    # def decode_indices(self, indices: Union[torch.Tensor, List[int], np.ndarray]) -> str:
+    #     """
+    #     Decode token indices to text using simple decoding (no LM).
+
+    #     Parameters:
+    #     - indices (Union[torch.Tensor, List[int], np.ndarray]): Token indices.
+
+    #     Returns:
+    #     - str: Decoded text.
+    #     """
+    #     if isinstance(indices, torch.Tensor):
+    #         indices = indices.squeeze().tolist()
+    #     elif isinstance(indices, np.ndarray):
+    #         indices = indices.tolist()
+    #     elif not isinstance(indices, list):
+    #         raise TypeError("decode_indices expects a list, torch.Tensor, or numpy.ndarray.")
+
+    #     return self.decode_simple(indices)
+
+    # def ctc_decode(self, logits: Union[torch.Tensor, List[int], np.ndarray]) -> str:
+    #     """
+    #     Perform CTC decoding on logits.
+
+    #     Parameters:
+    #     - logits (Union[torch.Tensor, List[int], np.ndarray]): Logits or token indices.
+
+    #     Returns:
+    #     - str: Decoded text.
+    #     """
+    #     if isinstance(logits, np.ndarray):
+    #         logits = torch.from_numpy(logits)
+    #     elif isinstance(logits, list):
+    #         logits = torch.tensor(logits)
+
+    #     if logits.dim() == 3:
+    #         logits = logits[0]  # Reduce to 2D (sequence length, vocab size)
+
+    #     if self.use_bpe:
+    #         if self.use_lm and self.decoder:
+    #             # Use LM if available
+    #             return self.decoder.decode(logits)
+    #         else:
+    #             # Use tokenizer-based decoding
+    #             predicted_indices = torch.argmax(logits, axis=-1).tolist()
+    #             return self.decode(predicted_indices)
+    #     else:
+    #         # Use character-based decoding
+    #         predicted_indices = torch.argmax(logits, axis=-1).tolist()
+    #         return self.decode_simple(predicted_indices)
+
+    # ### CURRENT VER ###
+
+
+
+    ### DEBUG VER ###
+
     def decode(self, indices: List[int]) -> str:
         """
         Decode indices to text using beam search decoder if available.
-
-        Parameters:
-        - indices (List[int]): List of token indices.
-
-        Returns:
-        - str: Decoded text.
         """
+        if self.debug:
+            print(f"[DEBUG] decode => indices: {indices[:50]} (showing up to 50)")
+
         if self.decoder:
             decoded_text = self.decoder.decode(indices)
-            # Convert to lower case
             decoded_text = decoded_text.lower()
+            if self.debug:
+                print(f"[DEBUG] decode => text from LM decoder: {decoded_text}")
             return decoded_text
         else:
             decoded_text = self.decode_simple(indices)
-            # Convert to lower case
             decoded_text = decoded_text.lower()
-            return decoded_text  # Ensure the decoded text is returned
+            if self.debug:
+                print(f"[DEBUG] decode => text from simple decoder: {decoded_text}")
+            return decoded_text
 
-    
+    def decode_simple(self, indices: List[int]) -> str:
+        """
+        Simple decoding: collapse duplicates, remove blank tokens, and handle BPE tokens.
+        """
+        if self.debug:
+            print(f"[DEBUG-simple] decode_simple => input indices: {indices}")
+
+        # Collapse repeated indices and remove blank tokens
+        collapsed = []
+        prev_idx = None
+        for idx in indices:
+            if idx == self.blank_index:
+                continue
+            if idx != prev_idx:
+                collapsed.append(idx)
+            prev_idx = idx
+
+        if self.debug:
+            print(f"[DEBUG-simple] Collapsed indices: {collapsed}")
+
+        # Convert indices to text
+        if self.use_bpe and self.sp is not None:
+            text = self.sp.decode(collapsed)
+            text = text.replace("▁", " ").strip()
+            if self.debug:
+                print(f"[DEBUG-simple] Decoded text (BPE): {text}")
+            return text
+        else:
+            # Character-based decoding
+            decoded_chars = [self.ind2char[idx] for idx in collapsed if idx in self.ind2char]
+            text = "".join(decoded_chars).strip()
+            if self.debug:
+                print(f"[DEBUG-simple] Decoded text (char): {text}")
+            return text
+
     def decode_logits(self, logits: Union[torch.Tensor, List[List[float]], np.ndarray]) -> str:
         """
         Decode logits using the decoder if available, otherwise use greedy decoding.
-
-        Parameters:
-        - logits (Union[torch.Tensor, List[List[float]], np.ndarray]): Logits output from the model.
-
-        Returns:
-        - str: Decoded text.
         """
         if isinstance(logits, torch.Tensor):
             logits = logits.cpu().numpy()
         elif isinstance(logits, list):
             logits = np.array(logits)
-        elif not isinstance(logits, np.ndarray):
-            raise TypeError("logits must be a torch.Tensor, list of lists, or numpy.ndarray")
 
         if logits.ndim == 3:
             logits = logits[0]
 
-        if logits.ndim != 2:
-            raise ValueError(f"Logits should be 2D (time_steps, vocab_size), got {logits.ndim}D")
+        if self.debug:
+            print(f"[DEBUG-logits] decode_logits => logits shape: {logits.shape}")
 
         if self.decoder:
-            decoded_text = self.decoder.decode(logits)
-            return decoded_text
+            text = self.decoder.decode(logits)
+            text = text.lower()
+            if self.debug:
+                print(f"[DEBUG-logits] Decoded text with LM: {text}")
+            return text
         else:
             predicted_indices = np.argmax(logits, axis=-1).tolist()
+            if self.debug:
+                print(f"[DEBUG-logits] Greedy indices: {predicted_indices[:50]} (showing up to 50)")
             return self.decode_simple(predicted_indices)
 
     def decode_indices(self, indices: Union[torch.Tensor, List[int], np.ndarray]) -> str:
         """
         Decode token indices to text using simple decoding (no LM).
-
-        Parameters:
-        - indices (Union[torch.Tensor, List[int], np.ndarray]): Token indices.
-
-        Returns:
-        - str: Decoded text.
         """
         if isinstance(indices, torch.Tensor):
             indices = indices.squeeze().tolist()
         elif isinstance(indices, np.ndarray):
             indices = indices.tolist()
-        elif not isinstance(indices, list):
-            raise TypeError("decode_indices expects a list, torch.Tensor, or numpy.ndarray.")
+
+        if self.debug:
+            print(f"[DEBUG-indices] decode_indices => input indices: {indices[:50]} (showing up to 50)")
 
         return self.decode_simple(indices)
 
     def ctc_decode(self, logits: Union[torch.Tensor, List[int], np.ndarray]) -> str:
         """
         Perform CTC decoding on logits.
-
-        Parameters:
-        - logits (Union[torch.Tensor, List[int], np.ndarray]): Logits or token indices.
-
-        Returns:
-        - str: Decoded text.
         """
         if isinstance(logits, np.ndarray):
             logits = torch.from_numpy(logits)
@@ -316,22 +447,23 @@ class CTCTextEncoder:
             logits = torch.tensor(logits)
 
         if logits.dim() == 3:
-            logits = logits[0]  # Reduce to 2D (sequence length, vocab size)
+            logits = logits[0]
+
+        if self.debug:
+            print(f"[DEBUG-ctc] ctc_decode => logits shape: {logits.shape}, use_bpe={self.use_bpe}")
 
         if self.use_bpe:
             if self.use_lm and self.decoder:
-                # Use LM if available
                 return self.decoder.decode(logits)
             else:
-                # Use tokenizer-based decoding
                 predicted_indices = torch.argmax(logits, axis=-1).tolist()
                 return self.decode(predicted_indices)
         else:
-            # Use character-based decoding
             predicted_indices = torch.argmax(logits, axis=-1).tolist()
             return self.decode_simple(predicted_indices)
 
-    
+    ### DEBUG VER ###
+
 
     def ctc_beam_search(self, probs, beam_size, use_lm = False, debug: bool = False) -> List[Tuple[str, float]]:
         """

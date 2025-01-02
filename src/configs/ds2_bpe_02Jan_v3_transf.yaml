@@ -1,6 +1,6 @@
 defaults:
   - model: ds2_31Dec
-  - writer: server
+  - writer: server2
   - metrics: ds2 # updated
   - datasets: full_ds2 # full_ds
   # - dataloader: sortagrad # new one to try!
@@ -45,12 +45,12 @@ text_encoder:
   use_lm: True # False # True
 trainer:
   log_step: 50 # 50 default
-  n_epochs: 250
-  epoch_len: 200 # # 1000 # 200 default
+  n_epochs: 375 # 250
+  epoch_len: 200 # 1000 # 200 default
   device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
   # resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   # resume_from: model_best.pth
-  resume_from: checkpoint-epoch248.pth 
+  resume_from: checkpoint-epoch52.pth 
   # resume_from: ds1 # testing
   device: auto # device name or "auto"
   override: True # if True, will override the previous run with the same name
@@ -58,7 +58,7 @@ trainer:
   # monitor: "min val_CER_(BeamSrch)" # updated
   save_period: 4 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
-  save_dir: "saved_bpe_31Dec_v4"
+  save_dir: "saved_bpe_02Jan"
   seed: 1
   use_beam_search: False # to CHECK if this switch if working here
   use_lm: True # False 

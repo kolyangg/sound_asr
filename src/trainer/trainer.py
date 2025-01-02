@@ -61,15 +61,17 @@ class Trainer(BaseTrainer):
             
             # First log greedy search results
             self.log_predictions(**batch, use_beam_search=False)
+
+            if self.config.trainer.use_beam_search:
             
-            # Then log beam search results if available
-            if hasattr(self.text_encoder, 'ctc_beam_search'):
-                self.log_predictions(**batch, use_beam_search=self.config.trainer.use_beam_search, use_lm=self.config.trainer.use_lm, 
-                                     beam_size = self.config.trainer.beam_size)
-                
-                # If LM is available, also log beam search + LM results
-                if hasattr(self.text_encoder, 'lm') and self.text_encoder.lm is not None:
-                    self.log_predictions(**batch, use_beam_search=True, use_lm=True, beam_size = self.config.trainer.beam_size)
+                # Then log beam search results if available
+                if hasattr(self.text_encoder, 'ctc_beam_search'):
+                    self.log_predictions(**batch, use_beam_search=self.config.trainer.use_beam_search, use_lm=self.config.trainer.use_lm, 
+                                        beam_size = self.config.trainer.beam_size)
+                    
+                    # If LM is available, also log beam search + LM results
+                    if hasattr(self.text_encoder, 'lm') and self.text_encoder.lm is not None:
+                        self.log_predictions(**batch, use_beam_search=True, use_lm=True, beam_size = self.config.trainer.beam_size)
                     
         
     def _log_batch(self, batch_idx, batch, mode="train"):
@@ -129,47 +131,60 @@ class Trainer(BaseTrainer):
             if debug1:
                 print(f"Example {i}: Greedy Prediction -> '{pred}'")
 
-        # Beam search decoding
-        if debug1:
-            print("\n=== Debug: Beam Search Decoding ===")
-        beam_predictions = []
-        probs = torch.exp(log_probs)  # Convert log_probs to probabilities
-        for i in range(len(text)):
-            seq_len = log_probs_length[i]
-            sequence_probs = probs[i, :seq_len]
-
-            # Perform beam search with dynamic beam_size
-            beam_results = self.text_encoder.ctc_beam_search(
-                sequence_probs.numpy(), beam_size=beam_size, use_lm=use_lm, debug=False
-            )
-            best_prediction = beam_results[0][0]  # Top beam result
-            beam_predictions.append(best_prediction)
+        if self.config.trainer.use_beam_search:
+            # Beam search decoding
             if debug1:
-                print(f"Example {i}: Beam Prediction -> '{best_prediction}'")
+                print("\n=== Debug: Beam Search Decoding ===")
+            beam_predictions = []
+            probs = torch.exp(log_probs)  # Convert log_probs to probabilities
+            for i in range(len(text)):
+                seq_len = log_probs_length[i]
+                sequence_probs = probs[i, :seq_len]
+
+                # Perform beam search with dynamic beam_size
+                beam_results = self.text_encoder.ctc_beam_search(
+                    sequence_probs.numpy(), beam_size=beam_size, use_lm=use_lm, debug=False
+                )
+                best_prediction = beam_results[0][0]  # Top beam result
+                beam_predictions.append(best_prediction)
+                if debug1:
+                    print(f"Example {i}: Beam Prediction -> '{best_prediction}'")
 
         # Compare and log results
         for i in range(min(examples_to_log, len(text))):
             target = self.text_encoder.normalize_text(text[i])
             greedy_pred = greedy_predictions[i]
-            beam_pred = beam_predictions[i]
+            if self.config.trainer.use_beam_search:
+                beam_pred = beam_predictions[i]
 
             # Calculate CER
             cer_greedy = calc_cer(target, greedy_pred) * 100
-            cer_beam = calc_cer(target, beam_pred) * 100
+            
+            if self.config.trainer.use_beam_search:
+                cer_beam = calc_cer(target, beam_pred) * 100
 
             if debug2:
                 print(f"\n=== Example {i} Comparison ===")
                 print(f"Target Text      : '{target}'")
                 print(f"Greedy Prediction: '{greedy_pred}' (CER: {cer_greedy:.2f})")
-                print(f"Beam Prediction  : '{beam_pred}' (CER: {cer_beam:.2f})")
+                if self.config.trainer.use_beam_search:
+                    print(f"Beam Prediction  : '{beam_pred}' (CER: {cer_beam:.2f})")
 
-            rows[Path(audio_path[i]).name] = {
-                "target": target,
-                "greedy_prediction": greedy_pred,
-                "beam_prediction": beam_pred,
-                "cer_greedy": cer_greedy,
-                "cer_beam": cer_beam,
-            }
+            if self.config.trainer.use_beam_search:
+                rows[Path(audio_path[i]).name] = {
+                    "target": target,
+                    "greedy_prediction": greedy_pred,
+                    "beam_prediction": beam_pred,
+                    "cer_greedy": cer_greedy,
+                    "cer_beam": cer_beam,
+                }
+            else:
+                rows[Path(audio_path[i]).name] = {
+                    "target": target,
+                    "greedy_prediction": greedy_pred,
+                    "cer_greedy": cer_greedy
+                }
+
 
         # Log table with predictions
         table_name = "predictions"

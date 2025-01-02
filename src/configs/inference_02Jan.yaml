@@ -1,31 +1,29 @@
 defaults:
-  - model: ds2_alpha
+  - model: ds2_31Dec
   - metrics: ds2_all
-  - datasets: full_ds_test # we do not want to run inference on training data
-  - dataloader: server_small
-  - transforms: example_only_instance # to check
+  - datasets: full_ds_test_check # full_ds_test # we do not want to run inference on training data
+  - dataloader: server2
+  - transforms: transforms # to check
   - _self_
 inferencer:
   # device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)
   device_tensors: ["spectrogram", "text_encoded"]
   device: auto # device name or "auto"
-  save_path: "saved_bpe_02Jan/inference" # any name here, can be a dataset name
+  save_path: "saved_bpe_02Jan/inference"  # any name here, can be a dataset name
   seed: 1
-  from_pretrained: "saved_lm5/ds2_lm/model_best.pth" # path to the pretrained model
+  from_pretrained: "saved_bpe_02Jan/ds2_lm/model_best.pth" # path to the pretrained model
   beam_size: 50 # New input
   # lm_weight: 0.5 # less for lighter model
 text_encoder:
   _target_: src.text_encoder.CTCTextEncoder
-  # arpa_path: 3-gram_lc.arpa
   arpa_path: 4-gram_lc_correct.arpa
-  # binary_path: 3-gram_lc.bin
   binary_path: 4-gram_lc_correct.bin
   # arpa_path: ~
   # binary_path: ~
   lm_weight: 0.5 # 0.5
   unigram_path: librispeech-vocab.txt
   # unigram_path: ~
-  use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
-  pretrained_tokenizer: bert-base-uncased
+  use_bpe: True
+  pretrained_tokenizer: "sentencepiece_model/librispeech_unigram_model1000_new2.model"
   use_lm: True
   

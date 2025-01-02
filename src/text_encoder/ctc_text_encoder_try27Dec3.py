@@ -30,6 +30,7 @@ class CTCTextEncoder:
 
         # Debug switch
         self.debug = False  # Set to True if you want verbose prints
+        self.debug_dec = False
 
         if self.debug:
             print("[DEBUG] Initializing CTCTextEncoder...")
@@ -145,12 +146,181 @@ class CTCTextEncoder:
             token_indices = [self.char2ind.get(char, self.char2ind.get(self.unk_token))
                              for char in normalized_text]
             return torch.tensor(token_indices).unsqueeze(0)
+        
+
+
+    # #### WORKING VERSION 01 JAN ####    
+
+    # def decode_simple(self, indices: List[int]) -> str:
+    #     """
+    #     Simple CTC decode => collapse repeats, remove blank.
+    #     If bpe => subword decode after collapsing, else => char-based.
+    #     """
+    #     if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
+    #         collapsed = []
+    #         prev_idx = None
+    #         for idx in indices:
+    #             if idx == self.blank_index:
+    #                 prev_idx = idx
+    #                 continue
+    #             if idx != prev_idx:
+    #                 collapsed.append(idx)
+    #             prev_idx = idx
+
+    #         if self.debug:
+    #             print(f"[DEBUG-bpe] decode_simple => collapsed={collapsed}")
+
+    #         text = self.sp.decode(collapsed)
+
+    #         if self.debug:
+    #             print(f"[DEBUG-bpe] decode_simple => text='{text}' before removing placeholders")
+
+    #         # Convert "▁" => space
+    #         text = text.replace("▁", " ")
+
+    #         # Remove any leftover placeholders: "⁇", "??", " ⁇" etc
+    #         placeholders = ["⁇", "??", " ⁇"]
+    #         for p in placeholders:
+    #             if p in text:
+    #                 if self.debug:
+    #                     print(f"[DEBUG-bpe] Removing placeholder '{p}' from text => '{text}'")
+    #                 text = text.replace(p, "")
+
+    #         # Merge repeated spaces
+    #         text = re.sub(r'\s+', ' ', text).strip()
+
+    #         return text
+    #     else:
+    #         # char-based => do not touch
+    #         decoded_chars = []
+    #         prev_idx = None
+    #         for idx in indices:
+    #             if idx == self.blank_index:
+    #                 prev_idx = idx
+    #                 continue
+    #             if idx == prev_idx:
+    #                 continue
+    #             if 0 <= idx < len(self.ind2char):
+    #                 decoded_chars.append(self.ind2char[idx])
+    #             prev_idx = idx
+    #         text = "".join(decoded_chars).strip().lower()
+    #         return text
+
+    # def decode(self, indices: List[int]) -> str:
+    #     """
+    #     If LM => decoder.decode(...), else => decode_simple
+    #     """
+    #     if self.decoder:
+    #         text = self.decoder.decode(indices).lower()
+    #         # Convert "▁" => space
+    #         text = text.replace("▁", " ")
+    #         # Remove placeholders
+    #         placeholders = ["⁇", "??", " ⁇"]
+    #         for p in placeholders:
+    #             if p in text:
+    #                 if self.debug:
+    #                     print(f"[DEBUG-lm] Removing placeholder '{p}' from text => '{text}'")
+    #                 text = text.replace(p, "")
+    #         text = re.sub(r'\s+', ' ', text).strip()
+    #         return text
+    #     else:
+    #         return self.decode_simple(indices).lower()
+
+    # def decode_logits(self, logits: Union[torch.Tensor, List[List[float]], np.ndarray]) -> str:
+    #     """
+    #     If LM => decoder.decode(logits), else => greedy => decode_simple
+    #     """
+    #     if isinstance(logits, torch.Tensor):
+    #         logits = logits.cpu().numpy()
+    #     elif isinstance(logits, list):
+    #         logits = np.array(logits)
+
+    #     if logits.ndim == 3:
+    #         logits = logits[0]
+    #     if logits.ndim != 2:
+    #         raise ValueError(f"Logits should be 2D, got shape {logits.shape}")
+
+    #     if self.debug:
+    #         print(f"[DEBUG] decode_logits => shape={logits.shape}, use_lm={self.use_lm}, use_bpe={self.use_bpe}, lm_weight={self.lm_weight}")
+
+    #     if self.decoder:
+    #         text = self.decoder.decode(logits).lower()
+    #         # Replace "▁" => space
+    #         text = text.replace("▁", " ")
+    #         # Remove placeholders
+    #         placeholders = ["⁇", "??", " ⁇"]
+    #         for p in placeholders:
+    #             if p in text:
+    #                 if self.debug:
+    #                     print(f"[DEBUG-lm] decode_logits => removing placeholder '{p}' => '{text}'")
+    #                 text = text.replace(p, "")
+    #         # Merge repeated spaces
+    #         text = re.sub(r'\s+', ' ', text).strip()
+    #         if self.debug:
+    #             print(f"[DEBUG-lm] decode_logits => partial='{text[:60]}...'")
+    #         return text
+    #     else:
+    #         predicted_indices = np.argmax(logits, axis=-1).tolist()
+    #         return self.decode_simple(predicted_indices)
+
+    # def decode_indices(self, indices: Union[torch.Tensor, List[int], np.ndarray]) -> str:
+    #     """
+    #     Direct decode => no LM
+    #     """
+    #     if isinstance(indices, torch.Tensor):
+    #         indices = indices.squeeze().tolist()
+    #     elif isinstance(indices, np.ndarray):
+    #         indices = indices.tolist()
+    #     return self.decode_simple(indices)
+
+    # def ctc_decode(self, logits: Union[torch.Tensor, List[int], np.ndarray]) -> str:
+    #     """
+    #     CTC decode from logits or token indices.
+    #     If bpe => subword approach, else => char-based approach
+    #     """
+    #     if isinstance(logits, np.ndarray):
+    #         logits = torch.from_numpy(logits)
+    #     elif isinstance(logits, list):
+    #         logits = torch.tensor(logits)
+
+    #     if self.debug:
+    #         print(f"[DEBUG] ctc_decode => shape={logits.shape}, use_bpe={self.use_bpe}")
+
+    #     if self.use_bpe:
+    #         # subword path
+    #         if logits.dim() == 3:
+    #             return self.decode_logits(logits)
+    #         elif logits.dim() == 2:
+    #             return self.decode_logits(logits)
+    #         elif logits.dim() == 1:
+    #             return self.decode_indices(logits)
+    #         else:
+    #             raise ValueError(f"Unsupported logits shape: {logits.shape}.")
+    #     else:
+    #         # char-based => do NOT TOUCH
+    #         if logits.dim() == 3:
+    #             return self.decode_logits(logits)
+    #         elif logits.dim() == 2:
+    #             return self.decode_logits(logits)
+    #         elif logits.dim() == 1:
+    #             return self.decode_indices(logits)
+    #         else:
+    #             raise ValueError(f"Unsupported logits shape: {logits.shape}.")
+            
+
+    # #### WORKING VERSION 01 JAN ####   
+
+
+    #### DEBUG VERSION 01 JAN #### 
 
     def decode_simple(self, indices: List[int]) -> str:
         """
-        Simple CTC decode => collapse repeats, remove blank.
-        If bpe => subword decode after collapsing, else => char-based.
+        Simple CTC decode: collapse repeats, remove blank.
+        For BPE, perform subword decoding; for char-based, concatenate characters.
         """
+        if self.debug_dec:
+            print(f"[DEBUG-simple] Input indices: {indices[:50]} (showing up to 50)")
+
         if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
             collapsed = []
             prev_idx = None
@@ -162,68 +332,55 @@ class CTCTextEncoder:
                     collapsed.append(idx)
                 prev_idx = idx
 
-            if self.debug:
-                print(f"[DEBUG-bpe] decode_simple => collapsed={collapsed}")
+            if self.debug_dec:
+                print(f"[DEBUG-bpe] Collapsed indices: {collapsed}")
 
+            # Decode subwords using SentencePiece
             text = self.sp.decode(collapsed)
 
-            if self.debug:
-                print(f"[DEBUG-bpe] decode_simple => text='{text}' before removing placeholders")
+            if self.debug_dec:
+                print(f"[DEBUG-bpe] Decoded text before placeholder removal: {text}")
 
-            # Convert "▁" => space
-            text = text.replace("▁", " ")
+            # Replace BPE word boundaries with spaces
+            text = text.replace("▁", " ").strip()
 
-            # Remove any leftover placeholders: "⁇", "??", " ⁇" etc
-            placeholders = ["⁇", "??", " ⁇"]
-            for p in placeholders:
-                if p in text:
-                    if self.debug:
-                        print(f"[DEBUG-bpe] Removing placeholder '{p}' from text => '{text}'")
-                    text = text.replace(p, "")
-
-            # Merge repeated spaces
-            text = re.sub(r'\s+', ' ', text).strip()
-
+            # Remove placeholders and merge spaces
+            text = self._clean_decoded_text(text)
             return text
         else:
-            # char-based => do not touch
+            # Character-based decoding
             decoded_chars = []
             prev_idx = None
             for idx in indices:
                 if idx == self.blank_index:
                     prev_idx = idx
                     continue
-                if idx == prev_idx:
-                    continue
-                if 0 <= idx < len(self.ind2char):
-                    decoded_chars.append(self.ind2char[idx])
+                if idx != prev_idx:
+                    decoded_chars.append(self.ind2char.get(idx, ""))
                 prev_idx = idx
+
             text = "".join(decoded_chars).strip().lower()
             return text
 
     def decode(self, indices: List[int]) -> str:
         """
-        If LM => decoder.decode(...), else => decode_simple
+        Decode indices to text using beam search decoder if available, else simple decoding.
         """
+        if self.debug_dec:
+            print(f"[DEBUG-decode] Decoding indices: {indices[:50]} (showing up to 50)")
+
         if self.decoder:
             text = self.decoder.decode(indices).lower()
-            # Convert "▁" => space
+            # Replace BPE word boundaries and clean placeholders
             text = text.replace("▁", " ")
-            # Remove placeholders
-            placeholders = ["⁇", "??", " ⁇"]
-            for p in placeholders:
-                if p in text:
-                    if self.debug:
-                        print(f"[DEBUG-lm] Removing placeholder '{p}' from text => '{text}'")
-                    text = text.replace(p, "")
-            text = re.sub(r'\s+', ' ', text).strip()
+            text = self._clean_decoded_text(text)
             return text
         else:
             return self.decode_simple(indices).lower()
 
     def decode_logits(self, logits: Union[torch.Tensor, List[List[float]], np.ndarray]) -> str:
         """
-        If LM => decoder.decode(logits), else => greedy => decode_simple
+        Decode logits using beam search decoder if available, otherwise greedy decoding.
         """
         if isinstance(logits, torch.Tensor):
             logits = logits.cpu().numpy()
@@ -233,26 +390,16 @@ class CTCTextEncoder:
         if logits.ndim == 3:
             logits = logits[0]
         if logits.ndim != 2:
-            raise ValueError(f"Logits should be 2D, got shape {logits.shape}")
+            raise ValueError(f"Logits should be 2D (time_steps, vocab_size), got {logits.ndim}D")
 
-        if self.debug:
-            print(f"[DEBUG] decode_logits => shape={logits.shape}, use_lm={self.use_lm}, use_bpe={self.use_bpe}, lm_weight={self.lm_weight}")
+        if self.debug_dec:
+            print(f"[DEBUG-logits] Logits shape: {logits.shape}")
 
         if self.decoder:
             text = self.decoder.decode(logits).lower()
-            # Replace "▁" => space
+            # Replace BPE word boundaries and clean placeholders
             text = text.replace("▁", " ")
-            # Remove placeholders
-            placeholders = ["⁇", "??", " ⁇"]
-            for p in placeholders:
-                if p in text:
-                    if self.debug:
-                        print(f"[DEBUG-lm] decode_logits => removing placeholder '{p}' => '{text}'")
-                    text = text.replace(p, "")
-            # Merge repeated spaces
-            text = re.sub(r'\s+', ' ', text).strip()
-            if self.debug:
-                print(f"[DEBUG-lm] decode_logits => partial='{text[:60]}...'")
+            text = self._clean_decoded_text(text)
             return text
         else:
             predicted_indices = np.argmax(logits, axis=-1).tolist()
@@ -260,47 +407,102 @@ class CTCTextEncoder:
 
     def decode_indices(self, indices: Union[torch.Tensor, List[int], np.ndarray]) -> str:
         """
-        Direct decode => no LM
+        Decode token indices to text without using logits.
         """
         if isinstance(indices, torch.Tensor):
             indices = indices.squeeze().tolist()
         elif isinstance(indices, np.ndarray):
             indices = indices.tolist()
+
+        if self.debug_dec:
+            print(f"[DEBUG-indices] Decoding indices: {indices[:50]} (showing up to 50)")
+
         return self.decode_simple(indices)
 
     def ctc_decode(self, logits: Union[torch.Tensor, List[int], np.ndarray]) -> str:
         """
-        CTC decode from logits or token indices.
-        If bpe => subword approach, else => char-based approach
+        Perform CTC decoding on logits.
         """
         if isinstance(logits, np.ndarray):
             logits = torch.from_numpy(logits)
         elif isinstance(logits, list):
             logits = torch.tensor(logits)
 
-        if self.debug:
-            print(f"[DEBUG] ctc_decode => shape={logits.shape}, use_bpe={self.use_bpe}")
+        if self.debug_dec:
+            print(f"[DEBUG-ctc] Logits shape: {logits.shape}, use_bpe={self.use_bpe}")
 
         if self.use_bpe:
-            # subword path
-            if logits.dim() == 3:
-                return self.decode_logits(logits)
-            elif logits.dim() == 2:
+            if logits.dim() == 3 or logits.dim() == 2:
                 return self.decode_logits(logits)
             elif logits.dim() == 1:
                 return self.decode_indices(logits)
             else:
-                raise ValueError(f"Unsupported logits shape: {logits.shape}.")
+                raise ValueError(f"Unsupported logits shape: {logits.shape}")
         else:
-            # char-based => do NOT TOUCH
-            if logits.dim() == 3:
-                return self.decode_logits(logits)
-            elif logits.dim() == 2:
+            if logits.dim() == 3 or logits.dim() == 2:
                 return self.decode_logits(logits)
             elif logits.dim() == 1:
                 return self.decode_indices(logits)
             else:
-                raise ValueError(f"Unsupported logits shape: {logits.shape}.")
+                raise ValueError(f"Unsupported logits shape: {logits.shape}")
+
+    def _clean_decoded_text(self, text: str) -> str:
+        """
+        Clean the decoded text: remove placeholders and merge repeated spaces.
+        """
+        # placeholders = ["⁇", "??", " ⁇"]
+        placeholders = [" ⁇ "]
+        for p in placeholders:
+            if p in text:
+                if self.debug_dec:
+                    print(f"[DEBUG-clean] Removing placeholder '{p}' from text: {text}")
+                text = text.replace(p, "")
+        
+
+        placeholders = ["⁇ ", " ⁇"]
+        for p in placeholders:
+            if p in text:
+                if self.debug_dec:
+                    print(f"[DEBUG-clean] Removing placeholder '{p}' from text: {text}")
+                text = text.replace(p, "")
+        
+        
+        # Merge repeated spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        if self.debug_dec:
+            print(f"[DEBUG-clean] Cleaned text: {text}")
+        return text
+    
+    # def _clean_decoded_text(self, text: str) -> str:
+    #     """
+    #     Clean the decoded text: remove placeholders, replace double placeholders with a space,
+    #     fix spaces, and normalize.
+    #     """
+    #     if self.debug_dec:
+    #         print(f"[DEBUG-clean] Before cleaning: {text}")
+
+    #     # Remove single placeholder " ⁇"
+    #     text = text.replace(" ⁇  ", "")
+
+    #     # Replace double placeholder " ⁇  " with a space
+    #     text = text.replace(" ⁇ ", " ")
+
+    #     # Replace BPE markers (▁) with spaces
+    #     text = text.replace("▁", " ")
+
+    #     # Normalize spaces
+    #     text = re.sub(r'\s+', ' ', text).strip()
+
+    #     if self.debug_dec:
+    #         print(f"[DEBUG-clean] After cleaning: {text}")
+    #     return text
+
+
+
+    #### DEBUG VERSION 01 JAN #### 
+
+
+
 
     def _initialize_language_model(self):
         if self.debug:
@@ -377,7 +579,7 @@ class CTCTextEncoder:
         return text
 
     def _basic_ctc_decode(self, logits: np.ndarray, sequence_length: int) -> List[str]:
-        if self.debug:
+        if self.debug_dec:
             print("[DEBUG] _basic_ctc_decode => start")
 
         argmax_indices = np.argmax(logits, axis=-1)
@@ -443,7 +645,7 @@ class CTCTextEncoder:
                 elif isinstance(probs, list):
                     probs = np.array(probs)
 
-                if self.debug:
+                if self.debug_dec:
                     print(f"[DEBUG] ctc_beam_search => shape={probs.shape}, use_bpe={self.use_bpe}, lm_weight={self.lm_weight}")
                 beams = self.decoder.decode_beams(
                     probs,
@@ -463,13 +665,15 @@ class CTCTextEncoder:
                     if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
                         text = text.replace("▁", " ")
 
-                    # Remove leftover placeholders
-                    placeholders = ["⁇", "??", " ⁇"]
-                    for p in placeholders:
-                        if p in text:
-                            if self.debug:
-                                print(f"[DEBUG-lm] Removing placeholder '{p}' => text='{text}'")
-                            text = text.replace(p, "")
+                    # # Remove leftover placeholders
+                    # placeholders = ["⁇", "??", " ⁇"]
+                    # for p in placeholders:
+                    #     if p in text:
+                    #         if self.debug:
+                    #             print(f"[DEBUG-lm] Removing placeholder '{p}' => text='{text}'")
+                    #         text = text.replace(p, "")
+                    
+                    text = self._clean_decoded_text(text)
 
                     # Merge repeated spaces
                     text = re.sub(r'\s+', ' ', text).strip()
@@ -480,7 +684,7 @@ class CTCTextEncoder:
                     formatted_beams.append((text.lower(), norm_score))
 
                 if not formatted_beams:
-                    if self.debug:
+                    if self.debug_dec:
                         print("[DEBUG] No valid beams => fallback to standard beam search")
                     return self._standard_beam_search(probs, debug)
 
@@ -511,7 +715,7 @@ class CTCTextEncoder:
             new_dp = defaultdict(lambda: float('-inf'))
             top_k = torch.topk(prob, k=min(beam_size, len(prob)))
 
-            if self.debug and t < 3:
+            if self.debug_dec and t < 3:
                 print(f"[DEBUG] _standard_beam_search => t={t}, top_k.indices={top_k.indices.tolist()}")
 
             for val, ind in zip(top_k.values, top_k.indices):
@@ -548,7 +752,7 @@ class CTCTextEncoder:
             placeholders = ["⁇", "??", " ⁇"]
             for p in placeholders:
                 if p in text:
-                    if self.debug:
+                    if self.debug_dec:
                         print(f"[DEBUG] _standard_beam_search => removing '{p}' => text='{text}'")
                     text = text.replace(p, "")
             text = text.lower().strip()
