@@ -16,11 +16,11 @@ train:
         max_gain_in_db: 3
         p: 0.3
 
-      - _target_: src.transforms.wav_augs.PitchShift
-        min_transpose_semitones: -2
-        max_transpose_semitones: 2
-        p: 0.3
-        sample_rate: 16000
+      # - _target_: src.transforms.wav_augs.PitchShift ### STUCK!!!
+      #   min_transpose_semitones: -2
+      #   max_transpose_semitones: 2
+      #   p: 0.3
+      #   sample_rate: 16000
 
       - _target_: src.transforms.wav_augs.AddBackgroundNoise
         background_paths: noise_samples

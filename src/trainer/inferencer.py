@@ -117,12 +117,24 @@ class Inferencer(BaseTrainer):
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)
 
-        lm_weight = self.text_encoder.lm_weight
+        # lm_weight = self.text_encoder.lm_weight
+        
+        self.text_encoder.lm_weight = self.config.text_encoder.lm_weight
+        use_beam_search = self.config.text_encoder.use_beam_search
+        self.text_encoder.use_beam_search = use_beam_search
+        beam_size = self.config.inferencer.beam_size
+
+        self.text_encoder.use_lm = self.config.text_encoder.use_lm
+        use_lm = self.text_encoder.use_lm
+
+        self.text_encoder.use_bpe = self.config.text_encoder.use_bpe
+        use_bpe = self.text_encoder.use_bpe
 
         # print('Inference:')
         # print("use_lm: ", use_lm)
         # print("beam_size: ", beam_size)
-        # print("lm_weight: ", lm_weight)
+        # print("lm_weight: ", self.text_encoder.lm_weight)
+        # print("use_bpe: ", use_bpe)
 
         with torch.no_grad():
             outputs = self.model(**batch)
@@ -146,6 +158,10 @@ class Inferencer(BaseTrainer):
                     #     # Use regular beam search
                     #     beam_results = self.text_encoder.ctc_beam_search(sequence_probs, beam_size=10)
                     
+
+                    # if use_lm:
+                    #     self.text_encoder._initialize_language_model() ### TESTING
+
                     beam_results = self.text_encoder.ctc_beam_search(
                         sequence_probs.numpy(), beam_size=beam_size, use_lm=use_lm, debug=False
                     )

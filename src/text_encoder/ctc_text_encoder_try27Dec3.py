@@ -15,12 +15,13 @@ class CTCTextEncoder:
         arpa_path: Optional[str] = None,
         binary_path: Optional[str] = "4-gram_lc_correct.bin",
         unigram_path: Optional[str] = "librispeech-vocab.txt",
-        pretrained_tokenizer: str = "sentencepiece_model/librispeech_unigram_model.model",
+        pretrained_tokenizer: str = "sentencepiece_model/librispeech_unigram_model1000_new2.model",
         lm_weight: float = 0.5,
         beam_size: int = 100,
         use_lm: bool = False,
         use_bpe: bool = False,
         blank_token: str = "<pad>",
+        # blank_token: str = "",
         unk_token: str = "<unk>",
         **kwargs
     ):
@@ -29,16 +30,10 @@ class CTCTextEncoder:
         """
 
         # Debug switch
+        self.debug0 = True 
         self.debug = False  # Set to True if you want verbose prints
         self.debug_dec = False
 
-        if self.debug:
-            print("[DEBUG] Initializing CTCTextEncoder...")
-            print(f"  -> arpa_path={arpa_path}, binary_path={binary_path}, unigram_path={unigram_path}")
-            print(f"  -> pretrained_tokenizer={pretrained_tokenizer}")
-            print(f"  -> lm_weight={lm_weight}, beam_size={beam_size}")
-            print(f"  -> use_lm={use_lm}, use_bpe={use_bpe}")
-            print(f"  -> blank_token={blank_token}, unk_token={unk_token}")
 
         self.beam_size = beam_size
         self.lm_weight = lm_weight
@@ -49,14 +44,27 @@ class CTCTextEncoder:
         self.use_lm = use_lm
         self.use_bpe = use_bpe
 
+
+        if not self.use_bpe:
+            self.blank_token = ""
+
+        if self.debug0:
+            print("[DEBUG] Initializing CTCTextEncoder...")
+            print(f"  -> arpa_path={arpa_path}, binary_path={binary_path}, unigram_path={unigram_path}")
+            print(f"  -> pretrained_tokenizer={pretrained_tokenizer}")
+            print(f"  -> lm_weight={lm_weight}, beam_size={beam_size}")
+            print(f"  -> use_lm={use_lm}, use_bpe={use_bpe}")
+            print(f"  -> blank_token={blank_token}, unk_token={unk_token}")
+
+        
         # Load unigrams if provided
         self.unigrams = None
         if unigram_path and os.path.exists(unigram_path):
-            if self.debug:
+            if self.debug0:
                 print(f"[DEBUG] Loading unigrams from {unigram_path}")
             with open(unigram_path, 'r', encoding='utf-8') as f:
                 self.unigrams = [line.strip().lower() for line in f if line.strip()]
-            if self.debug:
+            if self.debug0:
                 print(f"[DEBUG] Loaded {len(self.unigrams)} unigrams")
 
         # Initialize vocabulary/tokenizer
@@ -67,7 +75,7 @@ class CTCTextEncoder:
         self.char2ind = {v: k for k, v in self.ind2char.items()}
         self.blank_index = self.char2ind.get(self.blank_token, None)
 
-        if self.debug:
+        if self.debug0:
             print("\n[DEBUG] Vocabulary Info:")
             print(f"  -> vocab size: {len(self.vocab)}")
             print(f"  -> blank_token='{self.blank_token}' => index={self.blank_index}")
@@ -83,13 +91,16 @@ class CTCTextEncoder:
         if self.use_lm:
             self._initialize_language_model()
         else:
-            if self.debug:
+            if self.debug0:
                 print("[DEBUG] No LM usage => self.decoder=None")
             self.lm = None
             self.decoder = None
 
-        if self.debug:
+        if self.debug0:
             print("[DEBUG] CTCTextEncoder initialized.\n")
+        
+        if self.debug0:
+            self.test_language_model()
 
     def _initialize_vocabulary(self, pretrained_tokenizer: str):
         """
@@ -97,7 +108,7 @@ class CTCTextEncoder:
         Otherwise, use a basic character-based vocab.
         """
         if self.use_bpe:
-            if self.debug:
+            if self.debug0:
                 print("[DEBUG] use_bpe=True => Loading SentencePiece model.")
             import sentencepiece as spm
 
@@ -108,24 +119,37 @@ class CTCTextEncoder:
             self.sp.load(pretrained_tokenizer)
 
             vocab_size = self.sp.get_piece_size()
-            if self.debug:
+            if self.debug0:
                 print(f"[DEBUG] Loaded SP model => vocab_size={vocab_size}")
                 print(f"[DEBUG] sp.IdToPiece(0)={self.sp.id_to_piece(0)} (often <unk>)")
 
             self.labels = [self.sp.id_to_piece(i) for i in range(vocab_size)]
             self.vocab = self.labels  # len(self.vocab) = vocab_size
+            self.labels = [token if token != "<unk>" else "" for token in self.labels] # TEST LINE FOR INFERENCE
+        # else:
+        #     # Character-based => do NOT TOUCH
+        #     if self.debug0:
+        #         print("[DEBUG] Initializing character-based vocabulary without using tokenizer.")
+        #     self.vocab = [
+        #         'a','b','c','d','e','f','g','h','i','j',
+        #         'k','l','m','n','o','p','q','r','s','t',
+        #         'u','v','w','x','y','z',' '
+        #     ]
+        #     # self.vocab += [self.blank_token, self.unk_token]
+        #     self.vocab += [self.blank_token]
+        #     self.labels = self.vocab
+        #     self.sp = None
+
         else:
             # Character-based => do NOT TOUCH
-            if self.debug:
+            if self.debug0:
                 print("[DEBUG] Initializing character-based vocabulary without using tokenizer.")
-            self.vocab = [
-                'a','b','c','d','e','f','g','h','i','j',
-                'k','l','m','n','o','p','q','r','s','t',
-                'u','v','w','x','y','z',' '
-            ]
-            self.vocab += [self.blank_token, self.unk_token]
+            # Ensure '<blank>' is at index 0
+            self.vocab = [self.blank_token] + list('abcdefghijklmnopqrstuvwxyz ')  # Index 0 is <blank>
             self.labels = self.vocab
             self.sp = None
+            if self.debug0:
+                print(f"[DEBUG] Character-based vocab: {self.vocab}")
 
     def encode(self, text: str) -> torch.Tensor:
         """
@@ -143,8 +167,21 @@ class CTCTextEncoder:
         else:
             # char-based => do not touch
             normalized_text = self.normalize_text(text)
-            token_indices = [self.char2ind.get(char, self.char2ind.get(self.unk_token))
+            # token_indices = [self.char2ind.get(char, self.char2ind.get(self.unk_token))
+            #                  for char in normalized_text]
+
+            token_indices = [self.char2ind.get(char, self.blank_index)  # Map unknown chars to blank_index
                              for char in normalized_text]
+
+            if self.debug:
+                print(f"[DEBUG-nobpe] encode => text='{text}' => token_ids={token_indices}")
+            
+            # Verify that all token_indices are within valid range
+            if not all(0 <= idx < len(self.vocab) for idx in token_indices):
+                invalid_indices = [idx for idx in token_indices if idx < 0 or idx >= len(self.vocab)]
+                print(f"[ERROR] Invalid token indices detected: {invalid_indices}")
+                raise ValueError("Invalid token indices found during encoding.")
+
             return torch.tensor(token_indices).unsqueeze(0)
         
 
@@ -472,6 +509,34 @@ class CTCTextEncoder:
         if self.debug_dec:
             print(f"[DEBUG-clean] Cleaned text: {text}")
         return text
+
+    
+    def _clean_decoded_text_lm(self, text: str) -> str:
+        """
+        Clean the decoded text: remove placeholders and merge repeated spaces.
+        """
+        # placeholders = ["⁇", "??", " ⁇"]
+        placeholders = [" ⁇ "]
+        for p in placeholders:
+            if p in text:
+                if self.debug_dec:
+                    print(f"[DEBUG-clean] Removing placeholder '{p}' from text: {text}")
+                text = text.replace(p, " ")
+        
+
+        placeholders = ["⁇ ", " ⁇"]
+        for p in placeholders:
+            if p in text:
+                if self.debug_dec:
+                    print(f"[DEBUG-clean] Removing placeholder '{p}' from text: {text}")
+                text = text.replace(p, "")
+        
+        
+        # Merge repeated spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        if self.debug_dec:
+            print(f"[DEBUG-clean] Cleaned text: {text}")
+        return text
     
     # def _clean_decoded_text(self, text: str) -> str:
     #     """
@@ -505,14 +570,14 @@ class CTCTextEncoder:
 
 
     def _initialize_language_model(self):
-        if self.debug:
+        if self.debug0:
             print("[DEBUG] _initialize_language_model => start")
 
         self.lm = None
         self.decoder = None
 
         model_path = self.binary_path if self.binary_path else self.arpa_path
-        if self.debug:
+        if self.debug0:
             print(f"[DEBUG] model_path => {model_path}")
         if not model_path or not os.path.exists(model_path):
             if self.debug:
@@ -521,7 +586,7 @@ class CTCTextEncoder:
 
         try:
             self.lm = kenlm.Model(model_path)
-            if self.debug:
+            if self.debug0:
                 print(f"[DEBUG] KenLM model loaded from: {model_path}")
                 print(f"[DEBUG-lm] Building decoder_config with alpha={self.lm_weight}, beta=0.1")
 
@@ -529,12 +594,12 @@ class CTCTextEncoder:
                 "labels": self.labels if self.use_bpe else self.vocab,
                 "kenlm_model_path": model_path,
                 "alpha": self.lm_weight,
-                "beta": 0.1,
+                "beta": 1.0, # 0.1,
                 "unk_score_offset": -10.0,
             }
 
             if self.unigrams:
-                if self.debug:
+                if self.debug0:
                     print("[DEBUG] Found unigrams => adding them to decoder_config.")
                 with open("unigrams_list.txt", "w", encoding="utf-8") as f:
                     for unigram in self.unigrams:
@@ -542,27 +607,67 @@ class CTCTextEncoder:
                 decoder_config["unigrams"] = self.unigrams
 
             self.decoder = build_ctcdecoder(**decoder_config)
-            if self.debug:
+            if self.debug0:
                 print("[DEBUG] LM-based decoder successfully initialized.")
         except Exception as e:
-            if self.debug:
+            if self.debug0:
                 print(f"[DEBUG] LM init failed => {str(e)}")
             self.decoder = None
 
+    
     def test_language_model(self):
-        if self.debug:
-            print("[DEBUG] test_language_model =>")
+            """Debug function to verify LM functionality"""
+            print("\nTesting Language Model...")
+            
+            # Check if LM is loaded
+            if self.lm is None:
+                print("Error: Language model is not loaded!")
+                return
+            
+            # Test sentences with expected relative scores
+            # test_sentences = [
+            #     "this is a good sentence",  # Should get good score
+            #     "this is also a good sentence",  # Should be similar
+            #     "thiss iss nott aa goodd sentencee",  # Should get worse score
+            #     "random word salad box cat",  # Should get bad score
+            #     "the cat sat on the mat",  # Should get good score
+            #     "",  # Edge case
+            #     "a",  # Edge case
+            # ]
 
-        if self.lm is None:
-            if self.debug:
-                print("[DEBUG] No LM loaded.")
-            return
+            test_sentences = [
+                '⁇ i ⁇ never ⁇ know ⁇ you ⁇ was ⁇ so ⁇ br a ⁇ jim ⁇ she ⁇ went ⁇ un ⁇ comfort ⁇ly ⁇',
+                'i never know you was so br a im she went un comfortly'
+            ]
+            
+            print("\nTesting individual sentences:")
+            for sentence in test_sentences:
+                score = self.score_with_lm(sentence)
+                print(f"\nText: '{sentence}'")
+                print(f"LM Score: {score:.4f}")
+            
+            # Test word completions
+            test_prefixes = [
+                "the quick brown",  # should favor "fox"
+                "how are",  # should favor "you"
+                "thank",  # should favor "you"
+                "nice to",  # should favor "meet"
+            ]
+            
+            print("\nTesting word completions:")
+            for prefix in test_prefixes:
+                print(f"\nPrefix: '{prefix}'")
+                completions = [
+                    prefix + " " + word for word in ["you", "fox", "cat", "xyz", "meet"]
+                ]
+                scores = [(completion, self.score_with_lm(completion)) 
+                        for completion in completions]
+                scores.sort(key=lambda x: x[1], reverse=True)
+                print("Top completions by score:")
+                for completion, score in scores[:3]:
+                    print(f"  '{completion}': {score:.4f}")
+        
 
-        sample_sents = ["this is a test", "hello world", "aaaa bbbb cccc dddd"]
-        for s in sample_sents:
-            score = self.lm.score(s, bos=True, eos=True)
-            if self.debug:
-                print(f"[DEBUG-lm] LM Score for '{s}' => {score:.4f}")
 
     def score_with_lm(self, text: str) -> float:
         if self.lm is None:
@@ -632,11 +737,89 @@ class CTCTextEncoder:
 
     def __len__(self):
         return len(self.vocab)
+    
+
+
+    # #### OKAY VERSION 02 JAN ####
+
+    # def ctc_beam_search(self, probs, beam_size=None, use_lm=False, debug=False) -> List[Tuple[str, float]]:
+    #     """
+    #     Beam search with optional LM. If LM => uses pyctcdecode, else => naive beam.
+    #     """
+    #     beam_size = beam_size or self.beam_size
+    #     if self.use_lm and self.decoder is not None:
+    #         try:
+    #             if isinstance(probs, torch.Tensor):
+    #                 probs = probs.cpu().numpy()
+    #             elif isinstance(probs, list):
+    #                 probs = np.array(probs)
+
+    #             if self.debug_dec:
+    #                 print(f"[DEBUG] ctc_beam_search => shape={probs.shape}, use_bpe={self.use_bpe}, lm_weight={self.lm_weight}")
+
+    #             beams = self.decoder.decode_beams(
+    #                 probs,
+    #                 beam_prune_logp=-10.0,
+    #                 token_min_logp=-5.0,
+    #                 hotwords=[],
+    #                 hotword_weight=10.0,
+    #             )
+
+    #             formatted_beams = []
+    #             for beam in beams[:beam_size]:
+    #                 text = beam[0]
+    #                 acoustic_score = beam[3]
+    #                 lm_score = beam[4]
+
+    #                 # If BPE => remove "▁"
+    #                 if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
+    #                     text = text.replace("▁", " ")
+
+    #                 # # Remove leftover placeholders
+    #                 # placeholders = ["⁇", "??", " ⁇"]
+    #                 # for p in placeholders:
+    #                 #     if p in text:
+    #                 #         if self.debug:
+    #                 #             print(f"[DEBUG-lm] Removing placeholder '{p}' => text='{text}'")
+    #                 #         text = text.replace(p, "")
+                    
+    #                 text = self._clean_decoded_text_lm(text)
+
+    #                 # Merge repeated spaces
+    #                 text = re.sub(r'\s+', ' ', text).strip()
+
+    #                 combined_score = (1 - self.lm_weight)*acoustic_score + self.lm_weight*lm_score
+    #                 text_len = max(1, len(text.split())) if self.use_bpe else max(1, len(text))
+    #                 norm_score = combined_score / text_len
+    #                 formatted_beams.append((text.lower(), norm_score))
+
+    #             if not formatted_beams:
+    #                 if self.debug_dec:
+    #                     print("[DEBUG] No valid beams => fallback to standard beam search")
+    #                 return self._standard_beam_search(probs, debug)
+
+    #             # Sort by descending normalized score
+    #             return sorted(formatted_beams, key=lambda x: -x[1])
+
+    #         except Exception as e:
+    #             if self.debug:
+    #                 print(f"[DEBUG] LM decode_beams failed => {e}, fallback to standard beam search")
+    #             return self._standard_beam_search(probs, debug)
+    #     else:
+    #         return self._standard_beam_search(probs, debug)
+        
+    # #### OKAY VERSION 02 JAN ####
+
+
+    #### NEW VER ####
 
     def ctc_beam_search(self, probs, beam_size=None, use_lm=False, debug=False) -> List[Tuple[str, float]]:
         """
         Beam search with optional LM. If LM => uses pyctcdecode, else => naive beam.
         """
+
+        debug = False
+
         beam_size = beam_size or self.beam_size
         if self.use_lm and self.decoder is not None:
             try:
@@ -645,8 +828,16 @@ class CTCTextEncoder:
                 elif isinstance(probs, list):
                     probs = np.array(probs)
 
-                if self.debug_dec:
-                    print(f"[DEBUG] ctc_beam_search => shape={probs.shape}, use_bpe={self.use_bpe}, lm_weight={self.lm_weight}")
+                if debug:
+                    print("\n=== LM Decoder Setup ===")
+                    print(f"Shape: {probs.shape}")
+                    print(f"Use BPE: {self.use_bpe}")
+                    print(f"LM weight: {self.lm_weight}")
+                    print(f"Probability stats:")
+                    print(f"Min prob: {np.min(probs):.4f}")
+                    print(f"Max prob: {np.max(probs):.4f}")
+                    print(f"Mean prob: {np.mean(probs):.4f}")
+
                 beams = self.decoder.decode_beams(
                     probs,
                     beam_prune_logp=-10.0,
@@ -655,52 +846,410 @@ class CTCTextEncoder:
                     hotword_weight=10.0,
                 )
 
-                formatted_beams = []
+                if debug:
+                    print("\n=== Raw Beam Results ===")
+                    for i, beam in enumerate(beams[:3]):
+                        print(f"\nBeam {i+1}:")
+                        print(f"Original text: '{beam[0]}'")
+                        print(f"Acoustic score: {beam[3]:.4f}")
+                        print(f"LM score: {beam[4]:.4f}")
+
+                # formatted_beams = []
+                # for beam in beams[:beam_size]:
+                #     text = beam[0]
+                #     acoustic_score = beam[3]
+                #     lm_score = beam[4]
+
+                #     if debug and len(formatted_beams) < 3:
+                #         print(f"\nProcessing beam:")
+                #         print(f"Before cleanup: '{text}'")
+
+                #     # If BPE => remove "▁"
+                #     if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
+                #         text = text.replace("▁", " ")
+                #         if debug and len(formatted_beams) < 3:
+                #             print(f"After BPE cleanup: '{text}'")
+                    
+                #     text = self._clean_decoded_text_lm(text)
+                #     if debug and len(formatted_beams) < 3:
+                #         print(f"After placeholder cleanup: '{text}'")
+
+                #     # Merge repeated spaces
+                #     text = re.sub(r'\s+', ' ', text).strip()
+                #     if debug and len(formatted_beams) < 3:
+                #         print(f"Final text: '{text}'")
+                #         print(f"Acoustic score: {acoustic_score:.4f}")
+                #         print(f"LM score: {lm_score:.4f}")
+
+                #     combined_score = (1 - self.lm_weight)*acoustic_score + self.lm_weight*lm_score
+                #     text_len = max(1, len(text.split())) if self.use_bpe else max(1, len(text))
+                #     norm_score = combined_score / text_len
+                #     if debug and len(formatted_beams) < 3:
+                #         print(f"Combined score: {combined_score:.4f}")
+                #         print(f"Normalized score: {norm_score:.4f}")
+                    
+                #     formatted_beams.append((text.lower(), norm_score))
+
+                # if not formatted_beams:
+                #     if debug:
+                #         print("\n[WARNING] No valid beams => fallback to standard beam search")
+                #     return self._standard_beam_search(probs, debug)
+
+                # if debug:
+                #     print("\n=== Final Beams ===")
+                #     for i, (text, score) in enumerate(sorted(formatted_beams, key=lambda x: -x[1])[:3]):
+                #         print(f"Beam {i+1}: '{text}' (score: {score:.4f})")
+
+                # # Sort by descending normalized score
+                # return sorted(formatted_beams, key=lambda x: -x[1])
+
+
+
+                acoustic_scores = []
+                lm_scores = []
+                beam_texts = []
+                
                 for beam in beams[:beam_size]:
                     text = beam[0]
                     acoustic_score = beam[3]
                     lm_score = beam[4]
-
-                    # If BPE => remove "▁"
+                    
+                    # Clean up text
                     if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
                         text = text.replace("▁", " ")
-
-                    # # Remove leftover placeholders
-                    # placeholders = ["⁇", "??", " ⁇"]
-                    # for p in placeholders:
-                    #     if p in text:
-                    #         if self.debug:
-                    #             print(f"[DEBUG-lm] Removing placeholder '{p}' => text='{text}'")
-                    #         text = text.replace(p, "")
-                    
-                    text = self._clean_decoded_text(text)
-
-                    # Merge repeated spaces
+                    text = self._clean_decoded_text_lm(text)
                     text = re.sub(r'\s+', ' ', text).strip()
-
-                    combined_score = (1 - self.lm_weight)*acoustic_score + self.lm_weight*lm_score
-                    text_len = max(1, len(text.split())) if self.use_bpe else max(1, len(text))
-                    norm_score = combined_score / text_len
-                    formatted_beams.append((text.lower(), norm_score))
-
-                if not formatted_beams:
-                    if self.debug_dec:
-                        print("[DEBUG] No valid beams => fallback to standard beam search")
-                    return self._standard_beam_search(probs, debug)
-
-                # Sort by descending normalized score
+                    
+                    acoustic_scores.append(acoustic_score)
+                    lm_scores.append(lm_score)
+                    beam_texts.append(text)
+                
+                # Find min/max for normalization
+                acoustic_min, acoustic_max = min(acoustic_scores), max(acoustic_scores)
+                lm_min, lm_max = min(lm_scores), max(lm_scores)
+                
+                if debug:
+                    print("\n=== Score Ranges ===")
+                    print(f"Acoustic scores: min={acoustic_min:.4f}, max={acoustic_max:.4f}")
+                    print(f"LM scores: min={lm_min:.4f}, max={lm_max:.4f}")
+                
+                # Create normalized beams
+                formatted_beams = []
+                for text, acoustic_score, lm_score in zip(beam_texts, acoustic_scores, lm_scores):
+                    # Normalize scores to [0,1] range
+                    norm_acoustic = (acoustic_score - acoustic_min) / (acoustic_max - acoustic_min) if acoustic_max > acoustic_min else 0
+                    norm_lm = (lm_score - lm_min) / (lm_max - lm_min) if lm_max > lm_min else 0
+                    
+                    # Combine normalized scores
+                    combined_score = (1 - self.lm_weight) * norm_acoustic + self.lm_weight * norm_lm
+                    
+                    if debug:
+                        print(f"\nBeam Text: '{text}'")
+                        print(f"Original scores - Acoustic: {acoustic_score:.4f}, LM: {lm_score:.4f}")
+                        print(f"Normalized scores - Acoustic: {norm_acoustic:.4f}, LM: {norm_lm:.4f}")
+                        print(f"Combined score: {combined_score:.4f}")
+                    
+                    formatted_beams.append((text.lower(), combined_score))
+                
+                # Sort by combined score
                 return sorted(formatted_beams, key=lambda x: -x[1])
 
             except Exception as e:
-                if self.debug:
-                    print(f"[DEBUG] LM decode_beams failed => {e}, fallback to standard beam search")
+                if debug:
+                    print(f"\n[ERROR] LM decode_beams failed: {str(e)}")
+                    print("Falling back to standard beam search")
                 return self._standard_beam_search(probs, debug)
         else:
             return self._standard_beam_search(probs, debug)
 
+
+
+
+    # def ctc_beam_search(self, probs, beam_size=None, use_lm=False, debug=False) -> List[Tuple[str, float]]:
+    #     """
+    #     Beam search with debug prints to diagnose issues
+    #     """
+    #     beam_size = beam_size or self.beam_size
+
+    #     debug = True
+        
+    #     # Debug prints for initial setup
+    #     if debug:
+    #         print("\n=== CTC Beam Search Debug ===")
+    #         print(f"Using LM: {use_lm}")
+    #         print(f"Using BPE: {self.use_bpe}")
+    #         print(f"Beam size: {beam_size}")
+    #         print(f"LM weight: {self.lm_weight}")
+    #         print(f"Model probs shape: {probs.shape}")
+    #         print(f"Vocabulary size: {len(self.vocab)}")
+    #         # Print top tokens from first timestep
+    #         if isinstance(probs, torch.Tensor):
+    #             top_probs, top_indices = torch.topk(probs[0], k=5)
+    #             print("\nTop 5 tokens at first timestep:")
+    #             for prob, idx in zip(top_probs, top_indices):
+    #                 token = self.ind2char[idx.item()]
+    #                 print(f"Token: '{token}', Prob: {prob:.4f}")
+        
+    #     if use_lm and self.decoder is not None:
+    #         try:
+    #             # Convert to numpy if needed
+    #             if isinstance(probs, torch.Tensor):
+    #                 probs = probs.cpu().numpy()
+    #             elif isinstance(probs, list):
+    #                 probs = np.array(probs)
+                
+    #             if debug:
+    #                 print("\n=== LM Decoder Setup ===")
+    #                 # print(f"Decoder labels size: {len(self.decoder.labels)}")
+    #                 # print(f"First few decoder labels: {self.decoder.labels[:10]}")
+    #                 # Check probability distribution
+    #                 print(f"\nProbability distribution stats:")
+    #                 print(f"Min prob: {np.min(probs):.4f}")
+    #                 print(f"Max prob: {np.max(probs):.4f}")
+    #                 print(f"Mean prob: {np.mean(probs):.4f}")
+                
+    #             beams = self.decoder.decode_beams(
+    #                 probs,
+    #                 beam_prune_logp=-10.0,
+    #                 token_min_logp=-5.0,
+    #                 beam_width=beam_size
+    #             )
+                
+    #             if debug:
+    #                 print("\n=== Raw Beam Results ===")
+    #                 for i, beam in enumerate(beams[:3]):  # Show first 3 beams
+    #                     print(f"\nBeam {i+1}:")
+    #                     print(f"Text: '{beam[0]}'")
+    #                     print(f"Acoustic score: {beam[3]:.4f}")
+    #                     print(f"LM score: {beam[4]:.4f}")
+                
+    #             formatted_beams = []
+    #             for beam in beams[:beam_size]:
+    #                 text = beam[0]
+    #                 acoustic_score = beam[3]
+    #                 lm_score = beam[4]
+                    
+    #                 if debug and len(formatted_beams) < 3:
+    #                     print(f"\nProcessing beam:")
+    #                     print(f"Original text: '{text}'")
+                    
+    #                 text = self._clean_decoded_text_lm(text)
+                    
+    #                 if debug and len(formatted_beams) < 3:
+    #                     print(f"Cleaned text: '{text}'")
+                    
+    #                 combined_score = (1 - self.lm_weight) * acoustic_score + self.lm_weight * lm_score
+    #                 text_len = max(1, len(text.split())) if self.use_bpe else max(1, len(text))
+    #                 norm_score = combined_score / text_len
+                    
+    #                 if debug and len(formatted_beams) < 3:
+    #                     print(f"Combined score: {combined_score:.4f}")
+    #                     print(f"Normalized score: {norm_score:.4f}")
+                    
+    #                 formatted_beams.append((text.lower(), norm_score))
+                
+    #             if formatted_beams:
+    #                 if debug:
+    #                     print("\n=== Final Beams ===")
+    #                     for i, (text, score) in enumerate(sorted(formatted_beams, key=lambda x: -x[1])[:3]):
+    #                         print(f"Beam {i+1}: '{text}' (score: {score:.4f})")
+    #                 return sorted(formatted_beams, key=lambda x: -x[1])
+                
+    #             if debug:
+    #                 print("\n[WARNING] No valid beams, falling back to standard beam search")
+    #             return self._standard_beam_search(probs, debug)
+                
+    #         except Exception as e:
+    #             if debug:
+    #                 print(f"\n[ERROR] LM decode_beams failed: {str(e)}")
+    #                 print("Stack trace:")
+    #                 import traceback
+    #                 traceback.print_exc()
+    #                 print("\nFalling back to standard beam search")
+    #             return self._standard_beam_search(probs, debug)
+    #     else:
+    #         if debug:
+    #             print("\nUsing standard beam search (no LM)")
+    #         return self._standard_beam_search(probs, debug)
+
+    # def ctc_beam_search(self, probs, beam_size=None, use_lm=False, debug=False) -> List[Tuple[str, float]]:
+    #     beam_size = beam_size or self.beam_size
+
+    #     debug = True
+        
+    #     if use_lm and self.decoder is not None:
+    #         try:
+    #             if isinstance(probs, torch.Tensor):
+    #                 probs = probs.cpu().numpy()
+    #             elif isinstance(probs, list):
+    #                 probs = np.array(probs)
+                
+    #             if debug:
+    #                 print("\n=== LM Decoder Setup ===")
+    #                 print(f"Probability distribution stats:")
+    #                 print(f"Min prob: {np.min(probs):.4f}")
+    #                 print(f"Max prob: {np.max(probs):.4f}") 
+    #                 print(f"Mean prob: {np.mean(probs):.4f}")
+                
+    #             # Create a wrapper class for KenLM model with cleaned scoring
+    #             class CleanTextKenLM:
+    #                 def __init__(self, base_model, clean_fn):
+    #                     self.base_model = base_model
+    #                     self.clean_fn = clean_fn
+                    
+    #                 def score(self, text, *args, **kwargs):
+    #                     cleaned_text = self.clean_fn(text)
+    #                     return self.base_model.score(cleaned_text, *args, **kwargs)
+                    
+    #                 def __getattr__(self, name):
+    #                     return getattr(self.base_model, name)
+                
+    #             # Store original model and replace with wrapped version
+    #             original_decoder = self.decoder
+    #             self.decoder = CleanTextKenLM(original_decoder, self._clean_decoded_text_lm)
+                
+    #             # Get beams with cleaned scoring
+    #             beams = self.decoder.decode_beams(
+    #                 probs,
+    #                 beam_prune_logp=-10.0,
+    #                 token_min_logp=-5.0,
+    #                 beam_width=beam_size * 2
+    #             )
+                
+    #             # Restore original model
+    #             self.decoder = original_decoder
+                
+    #             if debug:
+    #                 print("\n=== Raw Beam Results (with clean scoring) ===")
+    #                 for i, beam in enumerate(beams[:3]):
+    #                     clean_text = self._clean_decoded_text_lm(beam[0])
+    #                     print(f"\nBeam {i+1}:")
+    #                     print(f"Original text: '{beam[0]}'")
+    #                     print(f"Clean text: '{clean_text}'")
+    #                     print(f"Acoustic score: {beam[3]:.4f}")
+    #                     print(f"LM score: {beam[4]:.4f}")
+                
+    #             # Format beams
+    #             formatted_beams = []
+    #             for beam in beams[:beam_size]:
+    #                 text = self._clean_decoded_text_lm(beam[0])
+    #                 if not text:
+    #                     continue
+                    
+    #                 acoustic_score = beam[3]
+    #                 lm_score = beam[4]
+    #                 combined_score = (1 - self.lm_weight) * acoustic_score + self.lm_weight * lm_score
+    #                 text_len = max(1, len(text.split()))
+    #                 norm_score = combined_score / text_len
+                    
+    #                 formatted_beams.append((text, norm_score))
+                
+    #             if formatted_beams:
+    #                 if debug:
+    #                     print("\n=== Final Beams ===")
+    #                     for i, (text, score) in enumerate(sorted(formatted_beams, key=lambda x: -x[1])[:3]):
+    #                         print(f"Beam {i+1}: '{text}' (score: {score:.4f})")
+    #                 return sorted(formatted_beams, key=lambda x: -x[1])
+                
+    #             if debug:
+    #                 print("\n[WARNING] No valid beams, falling back to standard beam search")
+    #             return self._standard_beam_search(probs, debug)
+                
+    #         except Exception as e:
+    #             if debug:
+    #                 print(f"\n[ERROR] LM decode_beams failed: {str(e)}")
+    #                 print("\nFalling back to standard beam search")
+    #             return self._standard_beam_search(probs, debug)
+    #     else:
+    #         return self._standard_beam_search(probs, debug)
+
+    #     #### NEW VER ####
+
+
+
+    # #### OKAY VERSION 02 JAN ####
+
+    # def _standard_beam_search(self, probs, debug=False) -> List[Tuple[str, float]]:
+    #     """
+    #     Naive beam search w/o LM => prefix expansions.
+    #     """
+    #     beam_size = self.beam_size
+    #     if isinstance(probs, np.ndarray):
+    #         probs = torch.from_numpy(probs)
+    #     if probs.device != torch.device('cpu'):
+    #         probs = probs.cpu()
+
+    #     dp = {("", self.blank_token): 0.0}
+    #     log_probs = torch.log(probs + 1e-8)
+
+    #     for t, prob in enumerate(log_probs):
+    #         new_dp = defaultdict(lambda: float('-inf'))
+    #         top_k = torch.topk(prob, k=min(beam_size, len(prob)))
+
+    #         if self.debug_dec and t < 3:
+    #             print(f"[DEBUG] _standard_beam_search => t={t}, top_k.indices={top_k.indices.tolist()}")
+
+    #         for val, ind in zip(top_k.values, top_k.indices):
+    #             curr_char = self.ind2char[ind.item()]
+    #             next_lp = val.item()
+
+    #             for (prefix, last_char), old_lp in dp.items():
+    #                 if last_char == curr_char and curr_char != " ":
+    #                     new_prefix = prefix
+    #                 else:
+    #                     if curr_char != self.blank_token:
+    #                         if curr_char == " " and prefix.endswith(" "):
+    #                             continue
+    #                         new_prefix = prefix + curr_char
+    #                     else:
+    #                         new_prefix = prefix
+
+    #                 new_score = old_lp + next_lp
+    #                 key = (new_prefix, curr_char)
+    #                 # Keep only max
+    #                 new_dp[key] = max(new_dp[key], new_score)
+
+    #         if len(new_dp) > 0:
+    #             max_score = max(new_dp.values())
+    #             new_dp = {k: v - max_score for k, v in new_dp.items()}
+
+    #         dp = dict(sorted(new_dp.items(), key=lambda x: -x[1])[:beam_size])
+
+    #     final_beams = []
+    #     for (text, _), score in dp.items():
+    #         # If BPE => remove placeholders
+    #         if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
+    #             text = text.replace("▁", " ")
+    #         # placeholders = ["⁇", "??", " ⁇"]
+    #         # for p in placeholders:
+    #         #     if p in text:
+    #         #         if self.debug_dec:
+    #         #             print(f"[DEBUG] _standard_beam_search => removing '{p}' => text='{text}'")
+    #         #         text = text.replace(p, "")
+
+    #         text = text.replace("<unk>", "") # REMOVE <unk> token from final output!!
+    #         # text = self._clean_decoded_text(text)
+
+    #         text = text.lower().strip()
+    #         text_len = max(1, len(text.split())) if self.use_bpe else max(1, len(text))
+    #         norm_score = score / text_len
+    #         final_beams.append((text, norm_score))
+
+    #     # Sort by descending normalized score
+    #     final_beams.sort(key=lambda x: -x[1])
+    #     if not final_beams:
+    #         final_beams = [("", float('-inf'))]
+    #     return final_beams[:beam_size]
+
+    # #### OKAY VERSION 02 JAN ####
+
+
+    #### NEW VER ####
+
     def _standard_beam_search(self, probs, debug=False) -> List[Tuple[str, float]]:
         """
         Naive beam search w/o LM => prefix expansions.
+        Handles both character-based and BPE-based vocab.
         """
         beam_size = self.beam_size
         if isinstance(probs, np.ndarray):
@@ -715,27 +1264,38 @@ class CTCTextEncoder:
             new_dp = defaultdict(lambda: float('-inf'))
             top_k = torch.topk(prob, k=min(beam_size, len(prob)))
 
-            if self.debug_dec and t < 3:
-                print(f"[DEBUG] _standard_beam_search => t={t}, top_k.indices={top_k.indices.tolist()}")
+            # if debug or (self.debug_dec and t < 3):  # Limit debug to first few steps
+            #     print(f"[DEBUG] _standard_beam_search => t={t}, top_k.indices={top_k.indices.tolist()}")
 
             for val, ind in zip(top_k.values, top_k.indices):
-                curr_char = self.ind2char[ind.item()]
+                curr_token = self.ind2char[ind.item()]  # Token can be char or subword
                 next_lp = val.item()
 
-                for (prefix, last_char), old_lp in dp.items():
-                    if last_char == curr_char and curr_char != " ":
+                for (prefix, last_token), old_lp in dp.items():
+                    # Manage repetitions
+                    if last_token == curr_token and curr_token != self.blank_token:
                         new_prefix = prefix
                     else:
-                        if curr_char != self.blank_token:
-                            if curr_char == " " and prefix.endswith(" "):
-                                continue
-                            new_prefix = prefix + curr_char
+                        if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
+                            # BPE subword handling
+                            if curr_token == "▁":
+                                new_prefix = prefix + " "  # Space before new word
+                            elif prefix.endswith("▁") or not prefix:
+                                new_prefix = prefix + curr_token
+                            else:
+                                new_prefix = prefix + curr_token
                         else:
-                            new_prefix = prefix
+                            # Character-based vocab (unchanged logic)
+                            if curr_token != self.blank_token:
+                                if curr_token == " " and prefix.endswith(" "):
+                                    continue
+                                new_prefix = prefix + curr_token
+                            else:
+                                new_prefix = prefix
 
+                    # Update scores
                     new_score = old_lp + next_lp
-                    key = (new_prefix, curr_char)
-                    # Keep only max
+                    key = (new_prefix, curr_token)
                     new_dp[key] = max(new_dp[key], new_score)
 
             if len(new_dp) > 0:
@@ -744,18 +1304,14 @@ class CTCTextEncoder:
 
             dp = dict(sorted(new_dp.items(), key=lambda x: -x[1])[:beam_size])
 
+        # Final beams
         final_beams = []
         for (text, _), score in dp.items():
-            # If BPE => remove placeholders
             if self.use_bpe and hasattr(self, 'sp') and self.sp is not None:
-                text = text.replace("▁", " ")
-            placeholders = ["⁇", "??", " ⁇"]
-            for p in placeholders:
-                if p in text:
-                    if self.debug_dec:
-                        print(f"[DEBUG] _standard_beam_search => removing '{p}' => text='{text}'")
-                    text = text.replace(p, "")
-            text = text.lower().strip()
+                text = text.replace("▁", " ").strip()
+            text = text.replace("<unk>", "").strip()
+
+            # Normalize score
             text_len = max(1, len(text.split())) if self.use_bpe else max(1, len(text))
             norm_score = score / text_len
             final_beams.append((text, norm_score))
@@ -766,6 +1322,9 @@ class CTCTextEncoder:
             final_beams = [("", float('-inf'))]
         return final_beams[:beam_size]
 
+
+
+    #### NEW VER ####
 
 
 
