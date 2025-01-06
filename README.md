@@ -89,7 +89,12 @@ Follow these steps to install the project:
    src/utils/sp_model.py
    ```
 
-4. Login to wandb and provide API key when prompted:
+4. Download checkpoint for the best model:
+   ```bash
+   src/utils/checkpoint_dl.py
+   ```
+   
+5. Login to wandb and provide API key when prompted:
    ```bash
    wandb login
    ```
@@ -97,23 +102,17 @@ Follow these steps to install the project:
 
 ## How To Use
 
-To train a model, run the following command:
+To train the best model, run the following command:
 
 ```bash
-python3 train.py -cn=CONFIG_NAME HYDRA_CONFIG_ARGUMENTS
+python3 train.py -cn=big_bpe
 ```
 
-For instance:
-```bash
-python3 train.py -cn=full_ds
-```
 
-Where `CONFIG_NAME` is a config from `src/configs` and `HYDRA_CONFIG_ARGUMENTS` are optional arguments.
-
-To run inference (evaluate the model or save predictions):
+To run inference on the best model, run the following command:
 
 ```bash
-python3 inference.py HYDRA_CONFIG_ARGUMENTS
+python3 inference.py -cn=inference_big_bpe
 ```
 
 ## Credits
