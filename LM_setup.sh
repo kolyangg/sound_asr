@@ -18,7 +18,7 @@ python3 src/utils/download.py
 
 # convert arpa models to binary
 echo "Converting arpa models to binary"
-./src/utils/LM_build.sh 4-gram.arpa 4-gram.bin
-./src/utils/LM_build.sh 3-gram.arpa 3-gram.bin
+./src/utils/LM_build.sh 4-gram_lc.arpa 4-gram_lc.bin
+./src/utils/LM_build.sh 3-gram_lc.arpa 3-gram_lc.bin
 
 echo "Done"
