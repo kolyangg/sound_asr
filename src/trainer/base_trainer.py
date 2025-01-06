@@ -243,14 +243,7 @@ class BaseTrainer:
                     batch,
                     metrics=self.train_metrics,
                 )
-                # # In _train_epoch, after fetching a batch
-                # if batch_idx < 2:  # print info for first two batches each epoch
-                #     print(f"\n[DEBUG] Epoch {epoch}, Batch {batch_idx}:")
-                #     print("Raw Transcripts:", batch['text'][:2])  # print first two transcripts
-                #     # Encode transcripts using text_encoder and print the indices
-                #     for i, t in enumerate(batch['text'][:2]):
-                #         encoded = self.text_encoder.encode(t).tolist()
-                #         print(f"Encoded transcript {i}: {encoded}")
+
 
             except torch.cuda.OutOfMemoryError as e:
                 if self.skip_oom:

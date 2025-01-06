@@ -1,0 +1,26 @@
+defaults:
+  - model: ds2_31Dec_big
+  - metrics: ds2_all
+  - datasets: test_full # full_ds_test # full_ds_test # full_ds_test_check # full_ds_test # we do not want to run inference on training data
+  - dataloader: server2_full # server_small # server # server_small # server2
+  - transforms: transforms # to check
+  - _self_
+inferencer:
+  device_tensors: ["spectrogram", "text_encoded"]
+  device: auto # device name or "auto"
+  save_path: "saved_bpe_05Jan_big/inference"  # any name here, can be a dataset name
+  seed: 1
+  from_pretrained: "saved_bpe_05Jan_big/ds2_lm/model_best.pth" # path to the pretrained model
+  beam_size: 100 # New input
+text_encoder:
+  _target_: src.text_encoder.CTCTextEncoder
+  arpa_path: 4-gram_lc_correct.arpa
+  binary_path: 4-gram_lc_correct.bin
+  lm_weight: 0.8 # 0.8 is best
+  unigram_path: librispeech-vocab.txt
+  use_bpe: True
+  pretrained_tokenizer: "sentencepiece_model/librispeech_unigram_model1000_new2.model"
+  use_lm: True
+  use_beam_search: True
+  
+  

@@ -19,17 +19,13 @@ def collate_fn(dataset_items: List[Dict]):
     spect_means, spect_stds = [], []
 
     for idx, item in enumerate(dataset_items):
-        # ---------------------------------------------------------------------
-        # 1) Validate required keys
-        # ---------------------------------------------------------------------
+        # Validate required keys
         required_keys = ["audio", "spectrogram", "text", "text_encoded", "audio_path"]
         missing = set(required_keys) - set(item.keys())
         if missing:
             raise KeyError(f"Item {idx} missing keys: {missing}")
 
-        # ---------------------------------------------------------------------
-        # 2) Audio validation and collection
-        # ---------------------------------------------------------------------
+        # Audio validation and collection
         audio = item["audio"]
         if not isinstance(audio, torch.Tensor):
             raise TypeError(f"Expected torch.Tensor for audio, got {type(audio)} at index {idx}")
@@ -44,9 +40,7 @@ def collate_fn(dataset_items: List[Dict]):
         audios.append(audio)
         audio_lengths.append(audio.shape[0])
 
-        # ---------------------------------------------------------------------
-        # 3) Spectrogram validation and collection
-        # ---------------------------------------------------------------------
+        # Spectrogram validation and collection
         spect = item["spectrogram"]
         if not isinstance(spect, torch.Tensor):
             raise TypeError(f"Expected torch.Tensor for spectrogram, got {type(spect)} at index {idx}")
@@ -71,9 +65,7 @@ def collate_fn(dataset_items: List[Dict]):
         spectrograms.append(spect)  # shape [F, T]
         spectrogram_lengths.append(spect.shape[1])
 
-        # ---------------------------------------------------------------------
-        # 4) Text processing
-        # ---------------------------------------------------------------------
+        # Text processing
         text_encoded = torch.as_tensor(item["text_encoded"], dtype=torch.long).view(-1)
         if text_encoded.size(0) == 0:
             raise ValueError(f"Empty text encoding at index {idx}")
@@ -83,17 +75,13 @@ def collate_fn(dataset_items: List[Dict]):
         texts.append(item["text"])
         audio_paths.append(item["audio_path"])
 
-    # -------------------------------------------------------------------------
-    # 5) Compute batch-level mean and std (averaging per-sample stats)
-    # -------------------------------------------------------------------------
+    # Compute batch-level mean and std (averaging per-sample stats)
     batch_mean = torch.tensor(spect_means).mean().clamp(min=1e-6)
     batch_std = torch.tensor(spect_stds).mean().clamp(min=1e-6)
 
-    # -------------------------------------------------------------------------
-    # 6) Normalize spectrograms: 
+    # Normalize spectrograms: 
     #    - Convert each spectrogram to shape [T, F] for consistent padding
     #    - Apply (spect - batch_mean) / batch_std
-    # -------------------------------------------------------------------------
     spectrograms_t = []
     for spect in spectrograms:  
         # [F, T] -> [T, F]
@@ -101,9 +89,7 @@ def collate_fn(dataset_items: List[Dict]):
         spect_t = (spect_t - batch_mean) / batch_std
         spectrograms_t.append(spect_t)
 
-    # -------------------------------------------------------------------------
-    # 7) Pad spectrograms (which are now [T, F]) with 0.0, then add small noise
-    # -------------------------------------------------------------------------
+    # Pad spectrograms (which are now [T, F]) with 0.0, then add small noise
     pad_noise_std = 1e-5
     padded_spectrograms_t = pad_sequence(
         spectrograms_t,  # list of [T, F]
@@ -117,9 +103,7 @@ def collate_fn(dataset_items: List[Dict]):
     # Finally, transform back to [B, F, T]
     padded_spectrograms = padded_spectrograms_t.transpose(1, 2)  # => [B, F, max_T]
 
-    # -------------------------------------------------------------------------
-    # 8) Return dictionary of padded/processed tensors
-    # -------------------------------------------------------------------------
+    # Return dictionary of padded/processed tensors
     return {
         "audio": pad_sequence(audios, batch_first=True),  # [B, max_audio_len]
         "audio_length": torch.tensor(audio_lengths, dtype=torch.long),

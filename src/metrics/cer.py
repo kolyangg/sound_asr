@@ -6,12 +6,7 @@ from torch import Tensor
 from src.metrics.base_metric import BaseMetric
 from src.metrics.utils import calc_cer
 
-# TODO add beam search/lm versions
-# Note: they can be written in a pretty way
-# Note 2: overall metric design can be significantly improved
 
-
-# In cer.py
 
 class ArgmaxCERMetric(BaseMetric):
     def __init__(self, text_encoder, *args, **kwargs):
@@ -34,59 +29,6 @@ class ArgmaxCERMetric(BaseMetric):
         return sum(cers) / len(cers)
 
 
-# class BeamSearchCERMetric(BaseMetric):
-#     def __init__(self, text_encoder, beam_size=10, use_lm=True, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.text_encoder = text_encoder
-#         self.beam_size = self.text_encoder.beam_size
-#         beam_size = self.beam_size
-#         self.use_lm = self.text_encoder.lm is not None
-                
-#         # debug part
-#         print(f"BeamSearchCERMetric: beam_size={self.beam_size}, use_lm={use_lm}")
-#         # self.use_lm = True
-
-#     def __call__(
-#         self, log_probs: Tensor, log_probs_length: Tensor, text: List[str], **kwargs
-#     ):
-#         """
-#         Calculate CER using beam search decoding.
-#         """
-#         cers = []
-#         debug = False
-        
-#         # Convert log_probs to probabilities
-#         probs = torch.exp(log_probs.cpu())
-
-#         # Loop through each example
-#         for i in range(len(text)):
-#             target_text = self.text_encoder.normalize_text(text[i])
-#             seq_len = log_probs_length[i].item()
-#             sequence_probs = probs[i, :seq_len]
-
-#             # Decode using beam search
-#             beam_results = self.text_encoder.ctc_beam_search(
-#                 sequence_probs.numpy(),
-#                 beam_size=self.beam_size,
-#                 use_lm=self.use_lm,
-#             )
-
-#             # Best prediction from beam search
-#             best_pred_text = beam_results[0][0]
-
-#             # Calculate CER
-#             cer = calc_cer(target_text, best_pred_text)
-#             cers.append(cer)
-
-#             # Debugging output
-#             if debug:
-#                 print(f"\n[DEBUG] Example {i}:")
-#                 print(f"Target Text : '{target_text}'")
-#                 print(f"Beam Prediction : '{best_pred_text}' (CER: {cer * 100:.2f})")
-        
-#         return sum(cers) / len(cers)
-
-# In trainer.py
 
 class BeamSearchCERMetric(BaseMetric):
     def __init__(self, text_encoder, beam_size=10, use_lm=True, *args, **kwargs):

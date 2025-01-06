@@ -137,7 +137,7 @@ class SpeedPerturb(nn.Module):
         return out
 
 
-#### Batch augs
+#### Batch augs ####
 
 class NormalizeBatch(nn.Module):
     def __init__(self, mean=0.0, std=1.0):
@@ -176,3 +176,5 @@ class BatchAdditiveNoise(nn.Module):
             noise = torch.randn_like(batch) * self.noise_level
             return batch + noise
         return batch
+    
+#### Batch augs ####

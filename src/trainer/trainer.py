@@ -198,6 +198,4 @@ class Trainer(BaseTrainer):
     
     
     
-    ### AFTER FIXING BEAM SEARCH ###
-    
     

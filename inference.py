@@ -31,9 +31,6 @@ def main(config):
 
     # setup text_encoder
     text_encoder = instantiate(config.text_encoder)
-    # print('encoder config: ')
-    # print(config.text_encoder)
-    # text_encoder.__init__(use_bpe=True, use_lm=True)
 
     # setup data_loader instances
     # batch_transforms should be put on device
