@@ -83,15 +83,10 @@ Follow these steps to install the project:
    ```bash
    ./LM_setup.sh
    ```
-
-3. Run script to setup and train sentencepiece model for BPE:
+   
+4. Download checkpoint for the best model and sentencepiece model for BPE:
    ```bash
-   src/utils/sp_model.py
-   ```
-
-4. Download checkpoint for the best model:
-   ```bash
-   src/utils/checkpoint_dl.py
+   python3 src/utils/checkpoint_dl.py
    ```
    
 5. Login to wandb and provide API key when prompted:
