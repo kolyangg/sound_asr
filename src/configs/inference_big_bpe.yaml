@@ -8,9 +8,9 @@ defaults:
 inferencer:
   device_tensors: ["spectrogram", "text_encoded"]
   device: auto # device name or "auto"
-  save_path: "saved_bpe_05Jan_big/inference"  # any name here, can be a dataset name
+  save_path: "saved_big_bpe/inference"  # any name here, can be a dataset name
   seed: 1
-  from_pretrained: "saved_bpe_05Jan_big/ds2_lm/model_best.pth" # path to the pretrained model
+  from_pretrained: "saved_big_bpe/ds2_lm/model_best.pth" # path to the pretrained model
   beam_size: 100 # New input
 text_encoder:
   _target_: src.text_encoder.CTCTextEncoder

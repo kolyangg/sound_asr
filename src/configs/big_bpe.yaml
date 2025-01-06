@@ -40,7 +40,7 @@ trainer:
   override: True # if True, will override the previous run with the same name
   monitor: "min val_CER_(Argmax)" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
   save_period: 4 # checkpoint each save_period epochs in addition to the best epoch
-  save_dir: "saved_bpe_05Jan_big"
+  save_dir: "saved_big_bpe"
   seed: 1
   use_beam_search: False
   use_lm: False

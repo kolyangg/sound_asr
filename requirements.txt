@@ -51,7 +51,7 @@ jsonschema-specifications==2024.10.1
 julius==0.2.7
 # jupyter_client @ file:///home/conda/feedstock_root/build_artifacts/jupyter_client_1733440914442/work
 # jupyter_core @ file:///home/conda/feedstock_root/build_artifacts/jupyter_core_1727163409502/work
-kenlm @ https://github.com/kpu/kenlm/archive/master.zip#sha256=d23d300d559a45a5e3ede958dbbf2395231119c0b8cd97a1ea43480625894ff4
+# kenlm @ https://github.com/kpu/kenlm/archive/master.zip#sha256=d23d300d559a45a5e3ede958dbbf2395231119c0b8cd97a1ea43480625894ff4
 kiwisolver==1.4.7
 lazy_loader==0.4
 librosa==0.10.2.post1
@@ -160,3 +160,6 @@ wurlitzer==3.1.1
 xxhash==3.5.0
 yarl==1.18.3
 # zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1732827521216/work
+
+gdown==5.2.0
+sentencepiece==0.2.0

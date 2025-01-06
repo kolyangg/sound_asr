@@ -31,7 +31,7 @@ os.makedirs(SAMPLE_NOISE_PATH, exist_ok=True)
 NOISE_FILENAME = "voices_noise.wav"
 noise_path = download_asset("tutorial-assets/Lab41-SRI-VOiCES-rm1-babb-mc01-stu-clo-8000hz.wav")
 
-# Copy the downloaded noise to your noise directory
+# Copy the downloaded noise to noise directory
 import shutil
 shutil.copy(noise_path, os.path.join(SAMPLE_NOISE_PATH, NOISE_FILENAME))
 print("Noise sample has been copied to", os.path.join(SAMPLE_NOISE_PATH, NOISE_FILENAME))
