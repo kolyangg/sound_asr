@@ -163,3 +163,4 @@ yarl==1.18.3
 
 gdown==5.2.0
 sentencepiece==0.2.0
+kenlm==0.2.0
