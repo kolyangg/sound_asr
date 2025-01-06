@@ -29,8 +29,8 @@ text_encoder:
   # lm_weight: 0
   unigram_path: librispeech-vocab.txt
   # unigram_path: ~
-  use_bpe: True # smth wrong with BPE (too high loss) - to CHECK!!!
-  pretrained_tokenizer: bert-base-uncased
+  use_bpe: True
+  pretrained_tokenizer: "sentencepiece_model/librispeech_unigram_model1000_new2.model"
 trainer:
   log_step: 200 # 50 default
   n_epochs: 100

@@ -14,8 +14,8 @@ inferencer:
   beam_size: 100 # New input
 text_encoder:
   _target_: src.text_encoder.CTCTextEncoder
-  arpa_path: 4-gram_lc_correct.arpa
-  binary_path: 4-gram_lc_correct.bin
+  arpa_path: 4-gram_lc.arpa
+  binary_path: 4-gram_lc.bin
   lm_weight: 0.8 # 0.8 is best
   unigram_path: librispeech-vocab.txt
   use_bpe: True

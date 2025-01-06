@@ -16,8 +16,8 @@ inferencer:
   beam_size: 100 # New input
 text_encoder:
   _target_: src.text_encoder.CTCTextEncoder
-  arpa_path: 4-gram_lc_correct.arpa
-  binary_path: 4-gram_lc_correct.bin
+  arpa_path: 4-gram_lc.arpa
+  binary_path: 4-gram_lc.bin
   # arpa_path: ~
   # binary_path: ~
   lm_weight: 0.7 # 0.5
