@@ -159,9 +159,11 @@ class Trainer(BaseTrainer):
 
             # Calculate CER
             cer_greedy = calc_cer(target, greedy_pred) * 100
+            wer_greedy = calc_wer(target, greedy_pred) * 100
             
             if self.config.trainer.use_beam_search:
                 cer_beam = calc_cer(target, beam_pred) * 100
+                wer_beam = calc_wer(target, beam_pred) * 100
 
             if debug2:
                 print(f"\n=== Example {i} Comparison ===")
@@ -177,12 +179,15 @@ class Trainer(BaseTrainer):
                     "beam_prediction": beam_pred,
                     "cer_greedy": cer_greedy,
                     "cer_beam": cer_beam,
+                    "wer_greedy": wer_greedy,
+                    "wer_beam": wer_beam
                 }
             else:
                 rows[Path(audio_path[i]).name] = {
                     "target": target,
                     "greedy_prediction": greedy_pred,
-                    "cer_greedy": cer_greedy
+                    "cer_greedy": cer_greedy,
+                    "wer_greedy": wer_greedy
                 }
 
 

@@ -1,5 +1,5 @@
 _target_: src.logger.WandBWriter
-project_name: "asr_output3"
+project_name: "asr_output5"
 entity: null
 run_name: "ds2_lm_cont"
 mode: "online"

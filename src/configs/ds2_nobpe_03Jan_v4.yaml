@@ -1,26 +1,17 @@
 defaults:
-  - model: ds2_31Dec  # ds2_31Dec_big
+  - model: ds2_31Dec
   - writer: server2
-  - metrics: ds2 # updated
-  - datasets: full_ds2 # full_ds
-  # - dataloader: sortagrad # new one to try!
-  - dataloader: server2 # server2_full
-  - transforms: transforms # default
-  # - transforms: example_only_instance_more # example_only_instance default
+  - metrics: ds2
+  - datasets: full_ds2
+  - dataloader: server2 
+  - transforms: transforms
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 3e-5 # 9e-5
-  # lr: 3e-4 # 9e-5  # lr: 3e-5 # using lower; 3e-4 default
-  # lr: 2e-4 # NEW
-  # weight_decay: 0.01 # NEW
+  lr: 3e-5
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.OneCycleLR
   max_lr: 3e-4 # 9e-4
-  # max_lr: 3e-3 # 9e-4
-  # max_lr: 3e-4
-  # max_lr: 6e-4 # NEW
-  #pct_start: 0.1
   pct_start: 0.1
   steps_per_epoch: ${trainer.epoch_len}
   epochs: ${trainer.n_epochs}
@@ -29,41 +20,30 @@ loss_function:
   _target_: src.loss.CTCLossWrapper
 text_encoder:
   _target_: src.text_encoder.CTCTextEncoder
-  # arpa_path: 3-gram_lc.arpa
   arpa_path: 4-gram_lc_correct.arpa
-  # binary_path: 3-gram_lc.bin
   binary_path: 4-gram_lc_correct.bin
-  # arpa_path: ~
-  # binary_path: ~
-  lm_weight: 0.0 # less for lighter model
-  # lm_weight: 0
+  lm_weight: 0.0
   unigram_path: librispeech-vocab.txt
-  # unigram_path: ~
-  use_bpe: False # smth wrong with BPE (too high loss) - to CHECK!!!
-  # pretrained_tokenizer: "sentencepiece_model/librispeech_unigram_model.model"
+  use_bpe: False
   pretrained_tokenizer: "sentencepiece_model/librispeech_unigram_model1000_new2.model"
-  beam_size: 1 # New input
-  use_lm: True # False # True
+  beam_size: 1
+  use_lm: True
 trainer:
   log_step: 50 # 50 default
   n_epochs: 375 # 250
-  epoch_len: 200 # 1000 # 200 default
+  epoch_len: 200
   device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
-  # resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   resume_from: model_best.pth
-  # resume_from: checkpoint-epoch268.pth 
-  # resume_from: ds1 # testing
   device: auto # device name or "auto"
   override: True # if True, will override the previous run with the same name
   monitor: "min val_CER_(Argmax)" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
-  # monitor: "min val_CER_(BeamSrch)" # updated
   save_period: 4 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved_nobpe_03Jan"
   seed: 1
-  use_beam_search: False # to CHECK if this switch if working here
-  use_lm: True # False 
-  beam_size: 1 # New input (remove from trainer later)
+  use_beam_search: False
+  use_lm: True
+  beam_size: 1
   max_grad_norm: 5.0 # Max norm of the gradients
   lm_weight_min: 0.0
   lm_weight_max: 0.0
